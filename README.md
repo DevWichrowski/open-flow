@@ -1,333 +1,329 @@
 # OpenFlow
 
-Dyktowanie push-to-talk dla macOS, po polsku i angielsku, z tłumaczeniem
-PL→EN w locie. Osobisty zamiennik Wispr Flow: bez subskrypcji, rozpoznawanie
-mowy w całości lokalne (audio nie opuszcza komputera), jakość polskiego
-dobrana pomiarem, a nie marketingiem.
+Push-to-talk dictation for macOS, in Polish and English, with on-the-fly
+PL→EN translation. A personal replacement for Wispr Flow: no subscription,
+speech recognition fully local (audio never leaves the machine), and Polish
+quality chosen by measurement rather than marketing.
 
-Trzymasz klawisz, mówisz, puszczasz. Tekst ląduje w aktywnej aplikacji:
-w edytorze, przeglądarce, Slacku, terminalu, gdziekolwiek.
+Hold a key, talk, release. The text lands in whatever app has focus: editor,
+browser, Slack, terminal, anywhere.
 
-Aplikacja żyje tylko w pasku menu (ikona mikrofonu), bez ikony w Docku.
+The app lives in the menu bar only (a microphone icon), with no Dock icon.
 
-## Funkcje w skrócie
+## Features at a glance
 
-- **Dyktowanie push-to-talk** (domyślnie prawy ⌘): mowa staje się tekstem
-  w języku, w którym mówisz. Polski i angielski, wykrywane automatycznie.
-- **Tłumaczenie w locie** (domyślnie prawy ⌃): mówisz po polsku, wkleja się
-  angielski.
-- **Style tekstu, osobno dla dyktowania i tłumaczenia**: Normalny
-  (dopracowana proza) i Luźny (czat: małe litery, bez kropek).
-- **TAB w trakcie nagrywania**: przełącza język dyktowania (Auto/PL/EN)
-  albo styl tłumaczenia, na żywo, bez puszczania klawisza.
-- **Rekorder skrótów**: kliknij przycisk, naciśnij klawisz, ustawione.
-- **Profil programisty**: feature, PR, commit, deploy zostają po angielsku
-  i są naprawiane, gdy rozpoznawanie je przekręci ("pi ar" → "PR").
-- **Poprawianie AI**: interpunkcja, usuwanie "yyy", naprawa polskich
-  końcówek. Domyślnie DeepSeek V4 Flash przez OpenRouter, grosze miesięcznie.
-- **Wszystko ma fallback**: brak internetu czy klucza API nigdy nie blokuje
-  dyktowania.
-- **Prywatność**: transkrypcja w 100% lokalna (Whisper na Neural Engine),
-  klucz API tylko w zmiennej środowiskowej, nigdzie nie zapisywany.
+- **Push-to-talk dictation** (right ⌘ by default): speech becomes text in the
+  language you spoke. Polish and English, detected automatically.
+- **On-the-fly translation** (right ⌃ by default): speak Polish, English gets
+  pasted.
+- **Text styles, separate for dictation and translation**: Normal (polished
+  prose) and Loose (chat style: lowercase, no full stops).
+- **TAB while recording**: cycles the dictation language (Auto/PL/EN) or the
+  translation style, live, without releasing the key.
+- **Hotkey recorder**: click the button, press a key, done.
+- **Developer profile**: feature, PR, commit, deploy stay in English and get
+  repaired when the recogniser mangles them ("pi ar" → "PR").
+- **AI cleanup**: punctuation, removing "uhm"s, fixing Polish inflection.
+  DeepSeek V4 Flash via OpenRouter by default, pennies per month.
+- **Everything has a fallback**: no network or no API key never blocks
+  dictation.
+- **Privacy**: transcription is 100% local (Whisper on the Neural Engine),
+  the API key lives only in an environment variable and is never stored.
 
-## Szybki start
+## Quick start
 
 ```sh
-git clone <to-repo> && cd open-flow
-make install                                   # buduje i kopiuje do /Applications
-launchctl setenv OPENROUTER_API_KEY sk-or-...  # opcjonalnie, dla funkcji AI
+git clone <this-repo> && cd open-flow
+make install                                   # builds and copies to /Applications
+launchctl setenv OPENROUTER_API_KEY sk-or-...  # optional, for the AI features
 open /Applications/OpenFlow.app
 ```
 
-Potem:
+Then:
 
-1. Zgódź się na dostęp do **Mikrofonu** i nadaj **Dostępność**
-   (Ustawienia systemowe → Prywatność i ochrona → Dostępność).
-2. Poczekaj na pobranie modelu (~1.5 GB) i jednorazową specjalizację
-   Core ML (~8 minut, tylko za pierwszym razem).
-3. Przytrzymaj prawy ⌘, powiedz coś po polsku, puść. Tekst się wklei.
-4. Włącz w menu "Poprawiaj tekst przez AI", jeśli ustawiłeś klucz.
+1. Grant **Microphone** access and **Accessibility**
+   (System Settings → Privacy & Security → Accessibility).
+2. Wait for the model download (~1.5 GB) and the one-time Core ML
+   specialisation (~8 minutes, first launch only).
+3. Hold right ⌘, say something in Polish, release. The text gets pasted.
+4. Enable "Poprawiaj tekst przez AI" in the menu if you set the key.
 
-## Funkcje szczegółowo
+## Features in detail
 
-### Dwa skróty push-to-talk
+### Two push-to-talk hotkeys
 
-| Skrót (domyślny) | Działanie |
+| Hotkey (default) | Action |
 | --- | --- |
-| Prawy ⌘ | **Dyktowanie**: tekst w języku, w którym mówisz (PL lub EN) |
-| Prawy ⌃ | **Tłumaczenie**: mówisz po polsku, wkleja się angielski |
+| Right ⌘ | **Dictation**: text in the language you spoke (PL or EN) |
+| Right ⌃ | **Translation**: speak Polish, English gets pasted |
 
-Oba skróty ustawia się rekorderem "kliknij przycisk, naciśnij klawisz".
-Zadziała dowolny pojedynczy klawisz: modyfikator (prawy ⌘, prawy ⌃, Fn...)
-albo zwykły klawisz (np. F13). Zwykły klawisz trzymany jako push-to-talk jest
-połykany przez aplikację, więc nie wpisuje znaków w aktywnym oknie. Escape
-anuluje nagrywanie skrótu, rekorder rozbraja się sam po 10 sekundach,
-a TAB nie może być skrótem, bo jest zarezerwowany do przełączania (niżej).
-Ten sam klawisz nie może pełnić obu ról.
+Both hotkeys are set with a click-then-press recorder. Any single key works:
+a modifier (right ⌘, right ⌃, Fn...) or a regular key (F13...). A regular key
+held as push-to-talk is swallowed by the app, so it never types characters
+into the active window. Escape cancels the recorder, the recorder disarms
+itself after 10 seconds, and TAB cannot be a hotkey because it is reserved
+for cycling (below). The same key cannot serve both roles.
 
-Podczas nagrywania przy dolnej krawędzi ekranu wisi pigułka pokazująca stan
-("Słucham…", "Rozpoznaję…", "Poprawiam…", "Tłumaczę…") oraz aktywny język
-lub styl. Widać ją też nad aplikacjami pełnoekranowymi.
+While recording, a pill floats near the bottom of the screen showing the
+state ("Słucham…", "Rozpoznaję…", "Poprawiam…", "Tłumaczę…") and the active
+language or style. It is visible over full-screen apps too.
 
-### TAB w trakcie nagrywania
+### TAB while recording
 
-Trzymając skrót, naciśnij TAB:
+While holding a hotkey, press TAB:
 
-- przy **dyktowaniu** przełącza język: Auto → PL → EN → Auto...
-- przy **tłumaczeniu** przełącza styl: Normalny ↔ Luźny
+- during **dictation** it cycles the language: Auto → PL → EN → Auto...
+- during **translation** it toggles the style: Normal ↔ Loose
 
-Wybór widać na żywo na pigułce i jest trwały (zostaje na kolejne dyktowania,
-do zmiany TAB-em albo w ustawieniach). TAB jest konsumowany przez aplikację,
-więc nie przeskakuje focusa ani nie odpala przełącznika ⌘Tab.
+The choice shows live on the pill and is persistent (it stays for future
+dictations, until changed with TAB or in Settings). TAB is consumed by the
+app, so it neither moves focus nor triggers the ⌘Tab switcher.
 
-Wymuszenie PL/EN pomija detekcję języka. Przydatne, gdy auto-wykrywanie
-się pomyli albo gdy dyktujesz krótkie wtrącenia.
+Forcing PL/EN skips language detection. Useful when auto-detection guesses
+wrong or when you dictate short snippets.
 
-### Style dyktowania i tłumaczenia
+### Dictation and translation styles
 
-Dyktowanie (styl nakłada przebieg Poprawiania AI):
+Dictation (the style is applied by the AI cleanup pass):
 
-- **Normalny**: pełna interpunkcja, wielkie litery, dopracowana proza.
-- **Luźny**: jak na czacie. Wszystko małymi literami (akronimy typu PR, API
-  i identyfikatory kodu zachowują pisownię), bez kropek na końcu zdań,
-  myśli rozdzielane przecinkami albo nową linią.
+- **Normal**: full punctuation, capital letters, polished prose.
+- **Loose**: like a chat message. Everything lowercase (acronyms like PR, API
+  and code identifiers keep their casing), no sentence-ending periods,
+  thoughts separated with commas or line breaks.
 
-Tłumaczenie:
+Translation:
 
-- **Normalny**: wierny i profesjonalny. Do opisów PR-ów, ticketów,
-  dokumentacji, maili.
-- **Luźny**: swobodny i idiomatyczny, jak native-speaker programista piszący
-  na Slacku. Model może przeredagować zdanie, byle sens został.
+- **Normal**: faithful and professional. For PR descriptions, tickets,
+  documentation, email.
+- **Loose**: relaxed and idiomatic, like a native-speaker developer on
+  WhatsApp or Slack, lowercase and without full stops. The model may rephrase
+  a sentence as long as the meaning survives.
 
-Oba style przełączysz w menu przy ikonie mikrofonu albo w Ustawieniach;
-styl tłumaczenia dodatkowo TAB-em w trakcie nagrywania.
+Both styles switch in the menu bar popover or in Settings; the translation
+style additionally with TAB while recording.
 
-### Profil programisty
+### Developer profile
 
-Prompty czyszczenia i tłumaczenia zakładają, że mówi programista. Angielskie
-terminy techniczne (feature, PR, merge request, commit, deploy, branch, code
-review, backlog, standup, endpoint, bug...) zostają po angielsku, nigdy nie są
-spolszczane ani tłumaczone, a przekręcone przez rozpoznawanie mowy formy są
-naprawiane ("pi ar" staje się "PR", "komit" staje się "commit").
+The cleanup and translation prompts assume the speaker is a software
+developer. English tech terms (feature, PR, merge request, commit, deploy,
+branch, code review, backlog, standup, endpoint, bug...) stay in English,
+are never polonised or translated, and forms mangled by speech recognition
+get repaired ("pi ar" becomes "PR", "komit" becomes "commit").
 
-Do tego dochodzi **słownik osobisty**: dowolne linie doklejane do promptów
-(pisownia nazwisk, nazwy projektów, żargon), edytowany w Ustawieniach.
+On top of that there is a **personal dictionary**: free-form lines appended
+to the prompts (name spellings, project names, jargon), edited in Settings.
 
-### Poprawianie tekstu przez AI (opcjonalne)
+### AI cleanup (optional)
 
-Drugi przebieg po transkrypcji: interpunkcja, wielkie litery, usuwanie
-"yyy"/"eee" i falstartów, naprawa polskich końcówek i znaków diakrytycznych.
-Domyślnie DeepSeek V4 Flash przez OpenRouter; zadziała każde API zgodne
-z formatem OpenAI (w ustawieniach można zmienić adres i model). Gdy API nie
-odpowie w limicie czasu, wkleja się surowa transkrypcja.
+A second pass after transcription: punctuation, capitalisation, removing
+"yyy"/"eee" and false starts, fixing Polish inflection and diacritics.
+Defaults to DeepSeek V4 Flash via OpenRouter; any OpenAI-compatible API works
+(base URL and model are editable in Settings). If the API does not answer
+within the timeout, the raw transcript is pasted.
 
-Koszt: jedno dyktowanie z poprawianiem to ~0.003 grosza, tłumaczenie
-~0.01 grosza. Przy intensywnym używaniu wychodzi kilkanaście groszy
-miesięcznie.
+Cost: one dictation with cleanup is ~$0.00001, a translation ~$0.00003.
+Heavy daily use adds up to a few cents per month.
 
-### Zawsze jest fallback
+### There is always a fallback
 
-| Scenariusz | Co się dzieje |
+| Scenario | What happens |
 | --- | --- |
-| Brak klucza API / brak internetu przy dyktowaniu | wkleja się surowa transkrypcja Whispera |
-| Brak klucza API / błąd sieci przy tłumaczeniu | tłumaczy lokalny Whisper (task translate), bez stylu, ale offline |
-| Nagranie krótsze niż 0.35 s | ignorowane (przypadkowe muśnięcie klawisza) |
-| Prawie-cisza | znane halucynacje Whispera ("Thank you.", napisy amara.org itp.) są wycinane |
-| Schowek | zapamiętywany przed wklejeniem i przywracany po 0.4 s |
+| No API key / no network during dictation | the raw Whisper transcript is pasted |
+| No API key / network error during translation | local Whisper translates (task translate), no style, but offline |
+| Recording shorter than 0.35 s | ignored (accidental key brush) |
+| Near-silence | known Whisper hallucinations ("Thank you.", amara.org credits...) are stripped |
+| Clipboard | snapshotted before pasting and restored 0.4 s later |
 
-## Jak to działa
+## How it works
 
 ```
-trzymasz skrót ──▶ AVAudioEngine nagrywa 16 kHz mono
-                          │
-puszczasz ────────────────▼
-              WhisperKit / Core ML na Neural Engine
-                          │  język: auto (tylko pl/en) albo wymuszony TAB-em
-                          ▼
-   dyktowanie: opcjonalny przebieg LLM (czyszczenie + styl, timeout 4 s,
-               fallback na surowy tekst)
-   tłumaczenie: przebieg LLM w wybranym stylu (fallback na lokalne
-               tłumaczenie Whispera)
-                          │
-                          ▼
-          wklejenie do aktywnej aplikacji przez ⌘V
-          (schowek jest zapamiętywany i przywracany)
+hold hotkey ──▶ AVAudioEngine records 16 kHz mono
+                        │
+release ────────────────▼
+              WhisperKit / Core ML on the Neural Engine
+                        │  language: auto (pl/en only) or forced via TAB
+                        ▼
+   dictation:  optional LLM pass (cleanup + style, 4 s timeout,
+               falls back to the raw text)
+   translation: LLM pass in the chosen style (falls back to Whisper's
+               built-in local translation)
+                        │
+                        ▼
+          pasted into the frontmost app via ⌘V
+          (the clipboard is snapshotted and restored)
 ```
 
-Trzy detale decydują o jakości polskiego:
+Three details decide the Polish quality:
 
-- **Detektor języka jest ograniczony do polskiego i angielskiego.**
-  Nieograniczony detektor Whispera regularnie bierze polską mowę za czeski
-  albo słowacki, co rujnuje transkrypcję. OpenFlow porównuje tylko
-  prawdopodobieństwa `pl` i `en`.
-- **Detekcja ma bias w stronę polskiego.** Angielski wygrywa dopiero przy
-  wyraźnej przewadze (margines 0.2). Polski dev-slang pełen słów typu
-  "code review" ciągnie detektor w stronę EN, a błędny EN jest najgorszą
-  awarią: Whisper wtedy tłumaczy polską mowę zamiast ją spisać. Błędny PL
-  na angielskiej mowie to tylko krzywa transkrypcja, do powtórzenia
-  z TAB→EN.
-- **Domyślny model to `large-v3-turbo`, wybrany pomiarem.** Turbo tnie
-  dekoder z 32 warstw do 4, co podobno kosztuje jakość w językach innych niż
-  angielski. Na polskiej mowie na tej maszynie transkrybował **3.7× szybciej**
-  (speed factor 6.6 vs 1.8, 39 vs 10 tokenów/s) i oddał polskie znaki oraz
-  odmianę co najmniej tak dobrze jak pełny large-v3. Pełny large-v3 zostaje
-  jako opcja w ustawieniach.
+- **The language detector is constrained to Polish and English.** Whisper's
+  unconstrained detector regularly labels Polish speech as Czech or Slovak,
+  which ruins the transcript. OpenFlow compares only the `pl` and `en`
+  probabilities.
+- **Detection is biased towards Polish.** English wins only with a clear
+  lead (a 0.2 margin). Polish dev-speak full of terms like "code review"
+  drags the detector towards EN, and a wrong EN is the worst failure mode:
+  Whisper then *translates* Polish speech instead of transcribing it.
+  A wrong PL on English speech is merely a garbled transcript, redone with
+  TAB→EN.
+- **The default model is `large-v3-turbo`, chosen by measurement.** Turbo
+  prunes the decoder from 32 layers to 4, which is usually described as
+  costing accuracy in non-English languages. On Polish speech on this machine
+  it transcribed **3.7× faster** (speed factor 6.6 vs 1.8, 39 vs 10 tokens/s)
+  and got the diacritics and inflection at least as right as full large-v3.
+  Full large-v3 stays available in Settings.
 
-## Wymagania
+## Requirements
 
-- macOS 14 lub nowszy, Apple Silicon
-- Xcode (dla toolchaina Swift)
-- ~1.5 GB dysku na domyślny model (więcej dla pełnej precyzji)
-- konto OpenRouter (albo dowolne API zgodne z OpenAI) do funkcji AI;
-  bez niego działa dyktowanie offline i tłumaczenie lokalne
+- macOS 14 or newer, Apple Silicon
+- Xcode (for the Swift toolchain)
+- ~1.5 GB of disk for the default model (more for full precision)
+- an OpenRouter account (or any OpenAI-compatible API) for the AI features;
+  without one, offline dictation and local translation still work
 
-## Budowanie
+## Building
 
 ```sh
-make build     # kompilacja + złożenie + podpisanie build/OpenFlow.app
-make run       # jak wyżej, potem uruchomienie
-make install   # kopiuje do /Applications
-make logs      # podgląd logów aplikacji
-make clean     # czyści artefakty builda
+make build     # compile + assemble + codesign build/OpenFlow.app
+make run       # the above, then launch
+make install   # copy to /Applications
+make logs      # tail the app's log output
+make clean     # remove build artifacts
 ```
 
-`Scripts/bundle.sh` podpisuje aplikację Twoją tożsamością Apple Development.
-To ważne: macOS wiąże zgody na Mikrofon i Dostępność z podpisem kodu, więc
-podpis ad-hoc oznaczałby ponowne klikanie zgód po każdej przebudowie.
-Inną tożsamość wskażesz przez `IDENTITY=...`.
+`Scripts/bundle.sh` signs the app with your Apple Development identity. That
+matters: macOS ties the Microphone and Accessibility grants to the code
+signature, so an ad-hoc signature would mean re-approving the app after every
+rebuild. Override with `IDENTITY=...` if you have several.
 
-## Pierwsze uruchomienie
+## First run
 
-1. Zgoda na **Mikrofon** (standardowy systemowy prompt).
-2. Zgoda na **Dostępność** (Ustawienia systemowe → Prywatność i ochrona →
-   Dostępność). Potrzebna podwójnie: żeby widzieć skróty globalnie i żeby
-   wysyłać ⌘V do innych aplikacji. Aplikacja sama wykrywa nadanie zgody,
-   bez restartu.
-3. Pobranie modelu mowy (~1.5 GB) do
-   `~/Library/Application Support/OpenFlow/models`. Postęp widać w menu.
+1. **Microphone** consent (the standard system prompt).
+2. **Accessibility** consent (System Settings → Privacy & Security →
+   Accessibility). Needed twice over: to see the hotkeys globally and to send
+   ⌘V to other apps. The app detects the grant by itself, no restart needed.
+3. The speech model (~1.5 GB) downloads into
+   `~/Library/Application Support/OpenFlow/models`. Progress shows in the menu.
 
-Potem uzbrój się w cierpliwość dokładnie raz. Core ML musi "wyspecjalizować"
-model pod Twój chip; dla modelu tej wielkości trwało to tu **około 8 minut**.
-Apple cache'uje wynik poza aplikacją, więc każdy kolejny start ładuje model
-w kilka sekund. To samo czekanie wraca po zmianie modelu albo gdy aktualizacja
-macOS wyczyści cache.
+Then be patient exactly once. Core ML has to "specialise" the model for your
+chip; for a model this size that took **around 8 minutes** here. Apple caches
+the result outside the app, so every later launch loads in seconds. The same
+wait returns after switching models or when a macOS update evicts the cache.
 
-Po zbudowaniu cache aplikacja nie dotyka sieci do transkrypcji. Pobiera
-ponownie tylko wtedy, gdy plików modelu fizycznie brakuje.
+Once the cache is built, the app never touches the network for transcription.
+It only re-downloads when the model files are genuinely missing.
 
-## Klucz API (tylko zmienna środowiskowa)
+## API key (environment variable only)
 
-Klucz nie jest nigdzie zapisywany przez aplikację: ani w ustawieniach, ani
-w Keychain. Czytany jest wyłącznie ze zmiennej `OPENROUTER_API_KEY`.
+The key is never stored by the app: not in settings, not in the Keychain.
+It is read exclusively from the `OPENROUTER_API_KEY` variable.
 
-Aplikacje GUI dziedziczą środowisko launchd, a nie shella, więc `export`
-w `.zshrc` nie wystarczy:
+GUI apps inherit launchd's environment rather than the shell's, so an
+`export` in `.zshrc` is not enough:
 
 ```sh
-launchctl setenv OPENROUTER_API_KEY sk-or-...   # do najbliższego restartu
+launchctl setenv OPENROUTER_API_KEY sk-or-...   # until the next reboot
 ```
 
-Żeby klucz przetrwał restart komputera, wrzuć tę linię do LaunchAgenta albo
-skryptu logowania, albo uruchamiaj aplikację z terminala z wyeksportowaną
-zmienną. Status klucza ("Wczytany ze środowiska" / "Nie znaleziono") widać
-w Ustawieniach na karcie Poprawianie AI.
+To survive reboots, put that line in a LaunchAgent or a login script, or
+launch the app from a terminal with the variable exported. The key status
+("Wczytany ze środowiska" / "Nie znaleziono") shows in Settings on the AI tab.
 
-## Ustawienia
+## Settings
 
-**Skróty.** Rekorder kliknij-i-naciśnij dla obu skrótów. Prawy ⌥ Option to
-zły wybór na polskim układzie Polish Pro, bo to klawisz od ą ć ę ł ń ó ś ź ż.
-Klawisz 🌐 Fn działa po ustawieniu Ustawienia systemowe → Klawiatura →
-"Naciśnięcie klawisza 🌐" → "Nic nie rób".
+**Hotkeys.** Click-then-press recorder for both. Right ⌥ Option is a poor
+choice on the Polish Pro layout, where it types ą ć ę ł ń ó ś ź ż. The 🌐 Fn
+key works after setting System Settings → Keyboard → "Press 🌐 key to" →
+"Do Nothing".
 
-**Język dyktowania.** Auto / Polski / Angielski. To samo, co przełącza TAB.
+**Dictation language.** Auto / Polish / English. The same thing TAB cycles.
 
-**Styl dyktowania.** Normalny / Luźny. Luźny pisze małymi literami i bez
-kropek; wymaga włączonego Poprawiania AI.
+**Dictation style.** Normal / Loose. Loose writes lowercase without periods;
+requires AI cleanup to be enabled.
 
-**Styl tłumaczenia.** Normalny / Luźny. To samo, co przełącza TAB przy
-skrócie tłumaczenia.
+**Translation style.** Normal / Loose. The same thing TAB toggles while the
+translate hotkey is held.
 
-**Model rozpoznawania.** Domyślnie `large-v3-turbo`. Zmiana modelu uruchamia
-pobieranie i nową specjalizację Core ML (znów kilka minut, raz).
+**Speech model.** Defaults to `large-v3-turbo`. Switching models triggers a
+fresh download and a fresh Core ML specialisation (minutes, once).
 
-**Poprawianie AI.** Przełącznik, adres API, nazwa modelu, timeout. Wyłączone,
-dopóki w środowisku nie ma klucza.
+**AI cleanup.** Toggle, base URL, model name, timeout. Disabled until a key
+is present in the environment.
 
-**Słownik osobisty.** Dowolne linie doklejane do promptów AI: pisownia
-nazwisk, nazwy projektów, żargon. Jedna reguła na linię.
+**Personal dictionary.** Free-form lines appended to the AI prompts: name
+spellings, project names, jargon. One rule per line.
 
-**Zachowanie.** Dźwięki startu/końca nagrywania i przełączania TAB-em,
-autostart przy logowaniu.
+**Behaviour.** Start/stop and TAB-cycle sounds, launch at login.
 
-Szybki dostęp do języka, stylów i przełącznika AI jest też w menu przy ikonie
-mikrofonu, razem z ostatnią transkrypcją i przyciskiem jej skopiowania.
+Quick access to the language, both styles and the AI toggle also lives in the
+menu bar popover, next to the last transcript and its copy button.
 
-## Rozwiązywanie problemów
+## Troubleshooting
 
-**Mówię po polsku, a wychodzi angielski.** Trzy możliwości: trzymasz skrót
-tłumaczenia zamiast dyktowania (pigułka pokaże "PL→EN"), TAB-em przełączyłeś
-język na EN (pigułka pokaże "EN"), albo auto-detekcja się pomyliła. Sprawdź
-w logach linię `detekcja języka: ... (pl=... en=...)`:
+**I speak Polish but English comes out.** Three possibilities: you are
+holding the translate hotkey instead of dictation (the pill shows "PL→EN"),
+TAB switched the language to EN (the pill shows "EN"), or auto-detection
+guessed wrong. Check the log line `detekcja języka: ... (pl=... en=...)`:
 
 ```sh
-make logs        # albo: log stream --predicate 'process == "OpenFlow"'
+make logs        # or: log stream --predicate 'process == "OpenFlow"'
 ```
 
-Doraźnie: TAB do wymuszenia PL.
+Immediate workaround: TAB to force PL.
 
-**Skróty nie reagują.** Brak zgody Dostępność, albo cofnęła się po
-przebudowie z inną tożsamością podpisu. Sprawdź badge w Ustawieniach.
+**Hotkeys do not react.** Accessibility consent is missing, or it lapsed
+after a rebuild with a different signing identity. Check the badge in
+Settings.
 
-**Aplikacja długo "Ładowanie modelu…" po aktualizacji macOS.** System
-wyczyścił cache Core ML; specjalizacja leci od nowa (~8 minut), raz.
+**"Ładowanie modelu…" takes long after a macOS update.** The system evicted
+the Core ML cache; specialisation runs again (~8 minutes), once.
 
-**Poprawianie AI wyszarzone.** Brak klucza w środowisku: `launchctl setenv`,
-potem restart aplikacji.
+**AI cleanup is greyed out.** No key in the environment: `launchctl setenv`,
+then restart the app.
 
-**Wkleja się "Thank you." albo napisy z amara.org.** To halucynacje Whispera
-na ciszy; znane wzorce są wycinane, nowe zgłoś (dopisz do listy
-w `TranscriptionEngine.swift`).
+**"Thank you." or amara.org credits get pasted.** Whisper hallucinates on
+silence; known patterns are stripped, report new ones (add them to the list
+in `TranscriptionEngine.swift`).
 
-## Układ kodu
+## Code layout
 
-| Plik | Rola |
+| File | Role |
 | --- | --- |
-| `AppState.swift` | Orkiestracja: skrót → nagranie → transkrypcja → czyszczenie/tłumaczenie → wklejenie |
-| `HotkeyManager.swift` | Globalny `CGEventTap`: dwa klawisze push-to-talk, TAB, rekorder skrótów |
-| `AudioRecorder.swift` | Nagrywanie `AVAudioEngine`, resampling do 16 kHz mono |
-| `TranscriptionEngine.swift` | WhisperKit: pobieranie, ładowanie, transkrypcja, lokalne tłumaczenie |
-| `CleanupService.swift` | Przebieg czyszczący ze stylem (API zgodne z OpenAI) |
-| `TranslationService.swift` | Tłumaczenie PL→EN, styl normalny albo luźny |
-| `TextInserter.swift` | Zapis schowka / wklejenie / przywrócenie |
-| `RecordingIndicator.swift` | Pływająca pigułka, widoczna też w trybie pełnoekranowym |
-| `Preferences.swift` | UserDefaults + klucz z ENV + autostart |
-| `MenuContentView.swift` | Menu przy ikonie w pasku |
-| `SettingsView.swift` | Okno ustawień |
+| `AppState.swift` | Orchestration: hotkey → record → transcribe → clean/translate → paste |
+| `HotkeyManager.swift` | Global `CGEventTap`: two push-to-talk keys, TAB, hotkey recorder |
+| `AudioRecorder.swift` | `AVAudioEngine` capture, resampled to 16 kHz mono |
+| `TranscriptionEngine.swift` | WhisperKit: download, load, transcription, local translation |
+| `CleanupService.swift` | Cleanup pass with style (OpenAI-compatible API) |
+| `TranslationService.swift` | PL→EN translation, normal or loose style |
+| `TextInserter.swift` | Clipboard snapshot / paste / restore |
+| `RecordingIndicator.swift` | Floating pill, visible over full-screen apps |
+| `Preferences.swift` | UserDefaults + env API key + login item |
+| `MenuContentView.swift` | Menu bar popover |
+| `SettingsView.swift` | Settings window |
 
-Szczegóły techniczne, które łatwo zgubić:
+Technical details that are easy to lose:
 
-- Tap zdarzeń jest **aktywny** (`.defaultTap`), nie listen-only, bo TAB
-  i zwykłe klawisze-skróty muszą być konsumowane zanim zobaczy je aktywna
-  aplikacja. Zdarzenia modyfikatorów (flagsChanged) zawsze przechodzą dalej.
-- System wyłącza tap, który za długo blokuje; callback obsługuje
-  `tapDisabledByTimeout` i włącza tap z powrotem.
-- Wklejanie robi snapshot schowka, podmienia go, wysyła syntetyczne ⌘V
-  i po 0.4 s przywraca poprzednią zawartość.
-- Modele lądują w Application Support, nie w ~/Documents (domyślna
-  lokalizacja klienta HuggingFace jest zła dla wielogigabajtowych plików).
-- Uprawnienia są odpytywane co 2 s, więc nadanie zgody w Ustawieniach
-  systemowych uzbraja aplikację bez restartu.
+- The event tap is **active** (`.defaultTap`), not listen-only, because TAB
+  and regular-key hotkeys must be consumed before the frontmost app sees
+  them. Modifier events (flagsChanged) always pass through.
+- The system disables a tap that blocks too long; the callback handles
+  `tapDisabledByTimeout` and re-enables it.
+- Pasting snapshots the clipboard, swaps it, sends a synthetic ⌘V and
+  restores the previous contents 0.4 s later.
+- Models live in Application Support, not ~/Documents (the HuggingFace
+  client's default location is wrong for multi-gigabyte files).
+- Permissions are polled every 2 s, so granting them in System Settings arms
+  the app without a restart.
 
-## Znane ograniczenia
+## Known limits
 
-- Realnie tylko Apple Silicon; Core ML na Intelu byłby dużo wolniejszy.
-- Aplikacja nie jest sandboxowana, bo sandbox nie pozwala na globalny event
-  tap, którego wymaga push-to-talk.
-- Nagrania są ucinane po 5 minutach, żeby zaklinowany klawisz nie rósł
-  buforem w nieskończoność.
-- Tłumaczenie wymusza transkrypcję po polsku. Jak przy trzymaniu skrótu
-  tłumaczenia zaczniesz mówić po angielsku, wyjdzie kalectwo; pigułka zawsze
-  pokazuje, który tryb jest aktywny.
-- Whisper z wymuszonym językiem EN na polskiej mowie potrafi tłumaczyć
-  zamiast transkrybować; to zachowanie modelu, nie bug aplikacji. Tryb Auto
-  albo wymuszony PL załatwiają sprawę.
+- Apple Silicon only in practice; Core ML on Intel would be far slower.
+- The app is not sandboxed, because a sandboxed process cannot install the
+  global event tap that push-to-talk needs.
+- Recordings are capped at 5 minutes, so a stuck key cannot grow the buffer
+  without bound.
+- Translation forces Polish transcription. If you start speaking English
+  while holding the translate hotkey, the result will be mangled; the pill
+  always shows which mode is active.
+- Whisper with a forced EN language on Polish speech tends to translate
+  instead of transcribing; that is model behaviour, not an app bug. Auto mode
+  or forced PL both handle it.
