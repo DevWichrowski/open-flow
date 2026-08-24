@@ -69,11 +69,13 @@ struct CleanupService {
     /// instead of polished prose.
     private static let looseStyle = """
 
-    Style override, the user wants loose chat style:
-    - Write everything in lowercase, including sentence starts. Keep acronyms \
-      (PR, API, CI...), proper names and code identifiers in their original \
+    Style override, the user wants loose chat style, like people write on \
+    WhatsApp or Messenger. Follow strictly:
+    - Write EVERYTHING in lowercase: sentence starts, names of days, the \
+      pronoun "I" in English... The only exceptions are acronyms (PR, API, \
+      CI...), proper names and code identifiers, which keep their original \
       casing.
-    - Do not end sentences with periods. Separate thoughts with commas or \
+    - Never end a sentence with a period. Separate thoughts with commas or \
       line breaks instead. Question marks are fine where the speaker asked \
       a question.
     - Keep the relaxed, informal chat feel. Still remove fillers and still \

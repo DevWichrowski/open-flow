@@ -43,8 +43,17 @@ struct TranslationService {
     private static let looseStyle = """
 
     Tone: casual and idiomatic, the way a native-speaker developer writes to \
-    teammates on Slack. You may freely rephrase sentences to sound natural and \
-    relaxed, as long as the meaning is preserved. Contractions welcome.
+    teammates on WhatsApp or Slack. You may freely rephrase sentences to sound \
+    natural and relaxed, as long as the meaning is preserved. Contractions \
+    welcome.
+
+    Formatting, follow strictly:
+    - everything in lowercase, including the first word and the word "i"
+    - EXCEPT acronyms, which stay uppercase exactly: "PR" not "pr", "API" \
+      not "api", "CI" not "ci"; proper names and code identifiers also keep \
+      their original casing
+    - no sentence-ending periods, separate thoughts with commas or line breaks
+    - a sentence that is a question MUST end with "?"
     """
 
     private struct ChatRequest: Encodable {
