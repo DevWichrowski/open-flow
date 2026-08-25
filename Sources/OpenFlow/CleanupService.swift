@@ -22,13 +22,13 @@ struct CleanupService {
         var errorDescription: String? {
             switch self {
             case .missingAPIKey:
-                return "Brak klucza API. Dodaj go w Ustawieniach."
+                return "The API key is missing."
             case .badURL:
-                return "Nieprawidłowy adres API."
+                return "The API address is invalid."
             case .http(let status, let body):
-                return "API zwróciło błąd \(status): \(body.prefix(200))"
+                return "The API returned error \(status): \(body.prefix(200))"
             case .emptyResponse:
-                return "API zwróciło pustą odpowiedź."
+                return "The API returned an empty response."
             }
         }
     }
@@ -38,22 +38,21 @@ struct CleanupService {
 
     private static let systemPrompt = """
     You are a dictation post-processor. You receive a raw speech-to-text \
-    transcript that may be in Polish or in English.
+    transcript that may be in Polish, Italian, Spanish or English.
 
     Rewrite it into clean written text by applying ONLY these operations:
     - Fix punctuation, capitalisation and sentence boundaries.
-    - Remove filler sounds and verbal stumbles: "yyy", "eee", "hmm", "um", "uh", \
-      "no więc" used as filler, repeated false starts, and stuttered repetitions.
+    - Remove filler sounds and verbal stumbles appropriate to the input language, \
+      including repeated false starts and stuttered repetitions.
     - Fix words the recogniser clearly got wrong, using the surrounding context. \
       Pay special attention to Polish: restore correct diacritics (ą ć ę ł ń ó ś ź ż), \
       correct inflection, and correct case endings.
     - Keep technical terms, product names, code identifiers and English loanwords \
       exactly as the speaker said them. Do not translate them.
-    - The speaker is a software developer. Polish dictation is full of English \
+    - The speaker is a software developer. Dictation can contain English \
       tech terms: feature, PR, merge request, commit, deploy, branch, code review, \
       backlog, standup, endpoint, bug, ticket... Keep them in English, never \
-      polonise or translate them, and fix them when the recogniser mangled them \
-      (e.g. "pi ar" means "PR", "komit" means "commit", "dziploj" means "deploy").
+      adapt or translate them, and fix them when the recogniser clearly mangled them.
 
     Hard rules:
     - Answer in the SAME language as the input. Never translate.

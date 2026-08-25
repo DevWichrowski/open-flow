@@ -106,10 +106,10 @@ private struct IndicatorView: View {
 
     private var label: String {
         switch state.status {
-        case .recording: return "Słucham…"
-        case .transcribing: return "Rozpoznaję…"
-        case .cleaning: return "Poprawiam…"
-        case .translating: return "Tłumaczę…"
+        case .recording: return t("indicator.listening")
+        case .transcribing: return t("indicator.transcribing")
+        case .cleaning: return t("indicator.cleaning")
+        case .translating: return t("indicator.translating")
         default: return ""
         }
     }
@@ -120,9 +120,18 @@ private struct IndicatorView: View {
         guard state.status == .recording else { return nil }
         switch state.currentMode {
         case .dictate:
-            return state.preferences.languageMode.shortLabel + " ⇥"
+            return state.preferences.languageMode.shortLabel(
+                primaryLanguage: state.preferences.primaryLanguage
+            ) + " ⇥"
         case .translate:
-            return "PL→EN " + state.preferences.translationStyle.label + " ⇥"
+            return state.preferences.primaryLanguage.shortLabel
+                + "→EN "
+                + state.preferences.translationStyle.label(language: state.preferences.appLanguage)
+                + " ⇥"
         }
+    }
+
+    private func t(_ key: String) -> String {
+        L10n.text(key, language: state.preferences.appLanguage)
     }
 }

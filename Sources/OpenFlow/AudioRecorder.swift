@@ -1,4 +1,6 @@
 import AVFoundation
+import AudioToolbox
+import CoreAudio
 import Foundation
 
 /// Captures microphone input and delivers it as 16 kHz mono Float32 samples,
@@ -7,16 +9,19 @@ final class AudioRecorder {
     enum RecorderError: LocalizedError {
         case microphoneDenied
         case converterUnavailable
+        case inputDeviceUnavailable
         case engineFailed(String)
 
         var errorDescription: String? {
             switch self {
             case .microphoneDenied:
-                return "Brak dostępu do mikrofonu. Włącz go w Ustawieniach systemowych → Prywatność i ochrona → Mikrofon."
+                return "Microphone access is denied."
             case .converterUnavailable:
-                return "Nie udało się przygotować konwersji audio do 16 kHz."
+                return "Audio conversion to 16 kHz could not be prepared."
+            case .inputDeviceUnavailable:
+                return "No input device is available."
             case .engineFailed(let message):
-                return "Nie udało się uruchomić nagrywania: \(message)"
+                return "The audio engine could not start: \(message)"
             }
         }
     }
@@ -58,8 +63,9 @@ final class AudioRecorder {
         }
     }
 
-    func start() throws {
-        guard !isRunning else { return }
+    /// Returns true when a missing selected device had to fall back to the system input.
+    func start(deviceUID: String?) throws -> Bool {
+        guard !isRunning else { return false }
 
         guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else {
             throw RecorderError.microphoneDenied
@@ -70,7 +76,24 @@ final class AudioRecorder {
         lock.unlock()
         level = 0
 
+        let resolution = AudioDeviceManager.resolvedDeviceID(for: deviceUID)
+        guard let deviceID = resolution.id else { throw RecorderError.inputDeviceUnavailable }
+
         let input = engine.inputNode
+        guard let audioUnit = input.audioUnit else { throw RecorderError.inputDeviceUnavailable }
+        var selectedDeviceID = deviceID
+        let deviceStatus = AudioUnitSetProperty(
+            audioUnit,
+            kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global,
+            0,
+            &selectedDeviceID,
+            UInt32(MemoryLayout<AudioDeviceID>.size)
+        )
+        guard deviceStatus == noErr else {
+            throw RecorderError.engineFailed("Core Audio error \(deviceStatus)")
+        }
+
         let inputFormat = input.outputFormat(forBus: 0)
 
         guard inputFormat.sampleRate > 0,
@@ -100,6 +123,7 @@ final class AudioRecorder {
         }
 
         isRunning = true
+        return resolution.usedFallback
     }
 
     /// Stops the engine and returns everything captured so far.

@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "OpenFlow",
+    defaultLocalization: "en",
     platforms: [.macOS(.v14)],
     dependencies: [
         // WhisperKit: OpenAI Whisper models compiled to Core ML, so transcription
@@ -16,11 +17,19 @@ let package = Package(
                 .product(name: "WhisperKit", package: "argmax-oss-swift"),
             ],
             path: "Sources/OpenFlow",
+            resources: [
+                .process("Resources"),
+            ],
             swiftSettings: [
                 // The AppKit/CoreGraphics callback surfaces here (CGEventTap,
                 // AVAudioEngine taps) predate strict concurrency checking.
                 .swiftLanguageMode(.v5),
             ]
+        ),
+        .testTarget(
+            name: "OpenFlowTests",
+            dependencies: ["OpenFlow"],
+            path: "Tests/OpenFlowTests"
         ),
     ]
 )

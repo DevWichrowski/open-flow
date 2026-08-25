@@ -6,7 +6,7 @@ import WhisperKit
 actor TranscriptionEngine {
     struct Model: Identifiable, Hashable {
         let id: String
-        let label: String
+        let labelKey: String
     }
 
     enum PrepareState {
@@ -22,7 +22,7 @@ actor TranscriptionEngine {
         var errorDescription: String? {
             switch self {
             case .notReady:
-                return "Model nie jest jeszcze załadowany."
+                return "The model is not loaded yet."
             }
         }
     }
@@ -35,19 +35,14 @@ actor TranscriptionEngine {
     /// inflection, so it is the default. Full large-v3 stays available in case a
     /// harder recording disagrees with that benchmark.
     static let availableModels: [Model] = [
-        .init(id: "openai_whisper-large-v3-v20240930_turbo", label: "Large v3 Turbo — domyślny, najszybszy"),
-        .init(id: "openai_whisper-large-v3-v20240930_626MB", label: "Large v3 Turbo — lekki (626 MB)"),
-        .init(id: "openai_whisper-large-v3_947MB", label: "Large v3 — wolniejszy, pełny dekoder"),
-        .init(id: "openai_whisper-large-v3", label: "Large v3 — pełna precyzja (~3 GB)"),
-        .init(id: "openai_whisper-small", label: "Small — tylko do testów"),
+        .init(id: "openai_whisper-large-v3-v20240930_turbo", labelKey: "model.turbo"),
+        .init(id: "openai_whisper-large-v3-v20240930_626MB", labelKey: "model.turbo_light"),
+        .init(id: "openai_whisper-large-v3_947MB", labelKey: "model.large_compact"),
+        .init(id: "openai_whisper-large-v3", labelKey: "model.large_full"),
+        .init(id: "openai_whisper-small", labelKey: "model.small"),
     ]
 
     static let defaultModel = "openai_whisper-large-v3-v20240930_turbo"
-
-    /// The languages we dictate in. Whisper's unconstrained detector happily
-    /// picks Czech or Slovak for Polish speech, which wrecks the transcript, so
-    /// we only ever choose between these two.
-    private static let candidateLanguages = ["pl", "en"]
 
     private var pipeline: WhisperKit?
     private var loadedModel: String?
@@ -139,20 +134,27 @@ actor TranscriptionEngine {
         } catch is CancellationError {
             // A newer prepare() superseded this one; it will report its own state.
         } catch {
-            report(.failed("Nie udało się przygotować modelu: \(error.localizedDescription)"))
+            report(.failed(error.localizedDescription))
         }
     }
 
-    /// `language` nil runs the pl/en detector; "pl"/"en" forces that language
-    /// (the TAB-cycled mode from the pill).
-    func transcribe(_ samples: [Float], language: String? = nil) async throws -> String {
+    /// `language` nil runs the primary/English detector. A value forces a language.
+    func transcribe(
+        _ samples: [Float],
+        language: String? = nil,
+        primaryLanguage: String = "pl"
+    ) async throws -> String {
         guard let pipeline else { throw EngineError.notReady }
 
         let resolved: String
         if let language {
             resolved = language
         } else {
-            resolved = await detectLanguage(samples, using: pipeline)
+            resolved = await detectLanguage(
+                samples,
+                primaryLanguage: primaryLanguage,
+                using: pipeline
+            )
         }
 
         let options = DecodingOptions(
@@ -172,12 +174,12 @@ actor TranscriptionEngine {
     /// Whisper's built-in speech translation to English. Quality is below the
     /// LLM pass but it runs fully offline, so it is the fallback when the
     /// translate hotkey has no API key or the network fails.
-    func translateNatively(_ samples: [Float]) async throws -> String {
+    func translateNatively(_ samples: [Float], language: String) async throws -> String {
         guard let pipeline else { throw EngineError.notReady }
 
         let options = DecodingOptions(
             task: .translate,
-            language: "pl",
+            language: language,
             detectLanguage: false,
             skipSpecialTokens: true,
             withoutTimestamps: true,
@@ -189,7 +191,7 @@ actor TranscriptionEngine {
         return Self.stripHallucinations(text)
     }
 
-    /// Picks Polish or English by comparing just those two probabilities.
+    /// Picks the configured primary language or English.
     ///
     /// English wins only when it is clearly ahead. Dev-speak Polish is full of
     /// English terms ("code review", "PR", "deploy"), which drags the detector
@@ -199,17 +201,43 @@ actor TranscriptionEngine {
     /// user can redo with TAB→EN.
     private static let englishMargin: Float = 0.2
 
-    private func detectLanguage(_ samples: [Float], using pipeline: WhisperKit) async -> String {
+    static func resolvedLanguage(
+        probabilities: [String: Float],
+        primaryLanguage: String
+    ) -> String {
+        let primary = probabilities[primaryLanguage] ?? 0
+        let english = probabilities["en"] ?? 0
+        return english > primary + englishMargin ? "en" : primaryLanguage
+    }
+
+    private func detectLanguage(
+        _ samples: [Float],
+        primaryLanguage: String,
+        using pipeline: WhisperKit
+    ) async -> String {
         do {
             let (_, probabilities) = try await pipeline.detectLangauge(audioArray: samples)
-            let pl = probabilities["pl"] ?? 0
-            let en = probabilities["en"] ?? 0
-            let language = en > pl + Self.englishMargin ? "en" : "pl"
-            NSLog("OpenFlow: detekcja języka: %@ (pl=%.3f en=%.3f)", language, pl, en)
+            let primary = probabilities[primaryLanguage] ?? 0
+            let english = probabilities["en"] ?? 0
+            let language = Self.resolvedLanguage(
+                probabilities: probabilities,
+                primaryLanguage: primaryLanguage
+            )
+            NSLog(
+                "OpenFlow: language detection: %@ (%@=%.3f en=%.3f)",
+                language,
+                primaryLanguage,
+                primary,
+                english
+            )
             return language
         } catch {
-            NSLog("OpenFlow: detekcja języka nie powiodła się (%@), wymuszam pl", error.localizedDescription)
-            return "pl"
+            NSLog(
+                "OpenFlow: language detection failed (%@), using %@",
+                error.localizedDescription,
+                primaryLanguage
+            )
+            return primaryLanguage
         }
     }
 

@@ -8,6 +8,7 @@ struct OpenFlowApp: App {
     var body: some Scene {
         MenuBarExtra {
             MenuContentView(state: state)
+                .environment(\.locale, state.preferences.appLanguage.locale)
         } label: {
             Image(systemName: state.menuBarSymbol)
                 .symbolRenderingMode(.hierarchical)
@@ -16,6 +17,7 @@ struct OpenFlowApp: App {
 
         Settings {
             SettingsView(state: state)
+                .environment(\.locale, state.preferences.appLanguage.locale)
         }
     }
 }
@@ -44,20 +46,26 @@ extension AppState {
     }
 
     var statusLabel: String {
+        let language = preferences.appLanguage
         switch status {
-        case .needsPermissions: return "Brakuje uprawnień"
+        case .needsPermissions:
+            return L10n.text("status.permissions_missing", language: language)
         case .preparingModel(let progress):
             return progress < 1
-                ? "Pobieranie modelu… \(Int(progress * 100))%"
-                : "Ładowanie modelu…"
+                ? L10n.text("status.downloading_model", language: language, Int(progress * 100))
+                : L10n.text("status.loading_model", language: language)
         case .idle:
-            return "Gotowe. \(preferences.dictationHotkey.label) dyktuje, "
-                + "\(preferences.translationHotkey.label) tłumaczy na angielski."
-        case .recording: return "Nagrywanie…"
-        case .transcribing: return "Rozpoznawanie mowy…"
-        case .cleaning: return "Poprawianie tekstu…"
-        case .translating: return "Tłumaczenie…"
-        case .failed(let message): return message
+            return L10n.text(
+                "status.ready",
+                language: language,
+                preferences.dictationHotkey.label(language: language),
+                preferences.translationHotkey.label(language: language)
+            )
+        case .recording: return L10n.text("status.recording", language: language)
+        case .transcribing: return L10n.text("status.transcribing", language: language)
+        case .cleaning: return L10n.text("status.cleaning", language: language)
+        case .translating: return L10n.text("status.translating", language: language)
+        case .failed(let failure): return failure.message(language: language)
         }
     }
 }

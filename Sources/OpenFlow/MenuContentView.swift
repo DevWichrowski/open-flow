@@ -17,7 +17,7 @@ struct MenuContentView: View {
             }
 
             if let warning = state.lastWarning {
-                Label(warning, systemImage: "exclamationmark.triangle")
+                Label(warning.message(language: language), systemImage: "exclamationmark.triangle")
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
@@ -29,46 +29,49 @@ struct MenuContentView: View {
 
             Divider()
 
-            Picker("Język dyktowania", selection: $state.preferences.languageMode) {
+            Picker(t("menu.dictation_language"), selection: $state.preferences.languageMode) {
                 ForEach(LanguageMode.allCases) { mode in
-                    Text(mode.shortLabel).tag(mode)
+                    Text(mode.shortLabel(primaryLanguage: state.preferences.primaryLanguage)).tag(mode)
                 }
             }
             .pickerStyle(.segmented)
             .controlSize(.small)
 
-            Picker("Styl dyktowania", selection: $state.preferences.dictationStyle) {
+            Picker(t("menu.dictation_style"), selection: $state.preferences.dictationStyle) {
                 ForEach(TextStyle.allCases) { style in
-                    Text(style.label).tag(style)
+                    Text(style.label(language: language)).tag(style)
                 }
             }
             .pickerStyle(.segmented)
             .controlSize(.small)
 
-            Picker("Styl tłumaczenia", selection: $state.preferences.translationStyle) {
+            Picker(t("menu.translation_style"), selection: $state.preferences.translationStyle) {
                 ForEach(TextStyle.allCases) { style in
-                    Text(style.label).tag(style)
+                    Text(style.label(language: language)).tag(style)
                 }
             }
             .pickerStyle(.segmented)
             .controlSize(.small)
 
-            Text("Przytrzymaj \(state.preferences.dictationHotkey.label): dyktowanie · "
-                 + "\(state.preferences.translationHotkey.label): tłumaczenie PL→EN · "
-                 + "TAB w trakcie przełącza.")
+            Text(t(
+                "menu.hotkey_help",
+                state.preferences.dictationHotkey.label(language: language),
+                state.preferences.translationHotkey.label(language: language),
+                state.preferences.primaryLanguage.shortLabel
+            ))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Divider()
 
-            Toggle("Poprawiaj tekst przez AI", isOn: $state.preferences.cleanupEnabled)
+            Toggle(t("menu.ai_cleanup"), isOn: $state.preferences.cleanupEnabled)
                 .toggleStyle(.switch)
                 .controlSize(.small)
                 .disabled(state.preferences.apiKey.isEmpty)
 
             if state.preferences.apiKey.isEmpty {
-                Text("Brak klucza: ustaw zmienną \(Preferences.apiKeyVariable) (szczegóły w Ustawieniach).")
+                Text(t("menu.api_key_missing", Preferences.apiKeyVariable))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -77,7 +80,7 @@ struct MenuContentView: View {
 
             HStack {
                 SettingsLink {
-                    Label("Ustawienia…", systemImage: "gearshape")
+                    Label(t("common.settings"), systemImage: "gearshape")
                 }
                 // An accessory app is not frontmost, so the settings window
                 // would otherwise open behind whatever the user is looking at.
@@ -85,7 +88,7 @@ struct MenuContentView: View {
                     NSApp.activate(ignoringOtherApps: true)
                 })
                 Spacer()
-                Button("Zakończ") { NSApp.terminate(nil) }
+                Button(t("common.quit")) { NSApp.terminate(nil) }
             }
             .controlSize(.small)
         }
@@ -111,20 +114,20 @@ struct MenuContentView: View {
     private var permissionsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             if !state.hasMicrophonePermission {
-                Label("Brak dostępu do mikrofonu", systemImage: "mic.slash")
+                Label(t("permissions.microphone_missing"), systemImage: "mic.slash")
                     .font(.caption)
-                Button("Otwórz ustawienia mikrofonu") {
+                Button(t("permissions.open_microphone")) {
                     openPrivacyPane("Privacy_Microphone")
                 }
                 .controlSize(.small)
             }
             if !state.hasAccessibilityPermission {
-                Label("Brak uprawnienia Dostępność", systemImage: "hand.raised")
+                Label(t("permissions.accessibility_missing"), systemImage: "hand.raised")
                     .font(.caption)
-                Text("Potrzebne, żeby wykrywać skrót i wklejać tekst.")
+                Text(t("permissions.accessibility_help"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                Button("Poproś o uprawnienie") {
+                Button(t("permissions.request")) {
                     state.requestAccessibilityPermission()
                     openPrivacyPane("Privacy_Accessibility")
                 }
@@ -135,24 +138,32 @@ struct MenuContentView: View {
 
     private var lastTranscriptSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Ostatnia transkrypcja")
+            Text(t("menu.last_transcript"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             ScrollView {
                 Text(state.lastTranscript)
                     .font(.callout)
                     .textSelection(.enabled)
+                    .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxHeight: 90)
+            .frame(minHeight: 70, maxHeight: 120)
             Button {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(state.lastTranscript, forType: .string)
             } label: {
-                Label("Kopiuj", systemImage: "doc.on.doc")
+                Label(t("common.copy"), systemImage: "doc.on.doc")
             }
             .controlSize(.small)
         }
+    }
+
+    private var language: AppLanguage { state.preferences.appLanguage }
+
+    private func t(_ key: String, _ arguments: CVarArg...) -> String {
+        L10n.text(key, language: language, arguments)
     }
 
     private func openPrivacyPane(_ anchor: String) {

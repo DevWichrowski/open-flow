@@ -7,6 +7,40 @@ import Observation
 @Observable
 @MainActor
 final class AppState {
+    struct Failure: Equatable {
+        let key: String
+        let detail: String
+
+        func message(language: AppLanguage) -> String {
+            L10n.text(key, language: language, detail)
+        }
+    }
+
+    enum Notice {
+        case microphoneFallback
+        case cleanupFailed(String)
+        case translationAPIFailed(String)
+        case translationFailed(String, PrimaryLanguage)
+
+        func message(language: AppLanguage) -> String {
+            switch self {
+            case .microphoneFallback:
+                return L10n.text("warning.microphone_fallback", language: language)
+            case .cleanupFailed(let detail):
+                return L10n.text("warning.cleanup_failed", language: language, detail)
+            case .translationAPIFailed(let detail):
+                return L10n.text("warning.translation_api_failed", language: language, detail)
+            case .translationFailed(let detail, let sourceLanguage):
+                return L10n.text(
+                    "warning.translation_failed",
+                    language: language,
+                    detail,
+                    sourceLanguage.label(language: language)
+                )
+            }
+        }
+    }
+
     enum Status: Equatable {
         case needsPermissions
         case preparingModel(progress: Double)
@@ -15,7 +49,7 @@ final class AppState {
         case transcribing
         case cleaning
         case translating
-        case failed(String)
+        case failed(Failure)
 
         var isBusy: Bool {
             switch self {
@@ -39,18 +73,20 @@ final class AppState {
     private(set) var currentMode: DictationMode = .dictate
     private(set) var lastTranscript: String = ""
     /// Set when cleanup failed but we pasted the raw transcript anyway.
-    private(set) var lastWarning: String?
+    private(set) var lastWarning: Notice?
     /// Non-nil while the Settings hotkey recorder waits for a key press.
     private(set) var capturingRole: HotkeyRole?
-    var captureError: String?
+    var captureError: HotkeySpec?
 
     var hasMicrophonePermission = false
     var hasAccessibilityPermission = false
+    private(set) var audioInputDevices: [AudioInputDevice] = []
 
     // `var` so SwiftUI can build bindings through it, e.g. $state.preferences.playSounds
     var preferences = Preferences()
 
     private let recorder = AudioRecorder()
+    private let audioDeviceManager = AudioDeviceManager()
     private let hotkeys = HotkeyManager()
     private let engine = TranscriptionEngine()
     private var permissionTimer: Timer?
@@ -63,12 +99,16 @@ final class AppState {
         hotkeys.onPress = { [weak self] role in self?.beginDictation(role: role) }
         hotkeys.onRelease = { [weak self] _ in self?.endDictation() }
         hotkeys.onTab = { [weak self] in self?.handleTab() }
+        audioDeviceManager.onDevicesChanged = { [weak self] in
+            Task { @MainActor in self?.refreshAudioInputDevices() }
+        }
     }
 
     // MARK: - Lifecycle
 
     func start() async {
         hasMicrophonePermission = await AudioRecorder.requestMicrophoneAccess()
+        refreshAudioInputDevices()
         refreshAccessibilityPermission()
         applyHotkeyBinding()
         watchForPermissionChanges()
@@ -99,6 +139,10 @@ final class AppState {
 
     func refreshAccessibilityPermission() {
         hasAccessibilityPermission = HotkeyManager.hasAccessibilityPermission
+    }
+
+    func refreshAudioInputDevices() {
+        audioInputDevices = audioDeviceManager.inputDevices()
     }
 
     func requestAccessibilityPermission() {
@@ -152,7 +196,7 @@ final class AppState {
                 ? self.preferences.translationHotkey
                 : self.preferences.dictationHotkey
             guard spec != other else {
-                self.captureError = "Klawisz \(spec.label) jest już przypisany do drugiego skrótu."
+                self.captureError = spec
                 return
             }
 
@@ -185,13 +229,13 @@ final class AppState {
                 modelReady = true
                 recomputeIdleStatus()
             case .failed(let message):
-                status = .failed(message)
+                status = .failed(.init(key: "error.model_prepare", detail: message))
             }
         }
     }
 
-    /// Recomputes the resting status. Anything that can change readiness — a
-    /// permission landing, a model finishing — routes through here so it cannot
+    /// Recomputes the resting status. Anything that can change readiness, such as a
+    /// permission landing or a model finishing, routes through here so it cannot
     /// report "ready" while something is still missing.
     private func recomputeIdleStatus() {
         guard !status.isBusy else { return }
@@ -217,13 +261,21 @@ final class AppState {
         }
 
         do {
-            try recorder.start()
+            lastWarning = nil
+            let usedFallback = try recorder.start(
+                deviceUID: preferences.selectedInputDeviceUID
+            )
+            if usedFallback {
+                lastWarning = .microphoneFallback
+            }
             currentMode = role == .translate ? .translate : .dictate
             status = .recording
-            lastWarning = nil
             play(.start)
         } catch {
-            status = .failed(error.localizedDescription)
+            status = .failed(.init(
+                key: "error.recording_failed",
+                detail: error.localizedDescription
+            ))
         }
     }
 
@@ -265,10 +317,13 @@ final class AppState {
 
             switch mode {
             case .dictate:
-                NSLog("OpenFlow: dyktowanie, tryb języka: %@", preferences.languageMode.rawValue)
+                NSLog("OpenFlow: dictation language mode: %@", preferences.languageMode.rawValue)
                 let raw = try await engine.transcribe(
                     samples,
-                    language: preferences.languageMode.whisperCode
+                    language: preferences.languageMode.whisperCode(
+                        primaryLanguage: preferences.primaryLanguage
+                    ),
+                    primaryLanguage: preferences.primaryLanguage.rawValue
                 )
                 let transcript = raw.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !transcript.isEmpty else {
@@ -284,8 +339,16 @@ final class AppState {
                 }
 
             case .translate:
-                NSLog("OpenFlow: tłumaczenie PL→EN, styl: %@", preferences.translationStyle.rawValue)
-                let raw = try await engine.transcribe(samples, language: "pl")
+                NSLog(
+                    "OpenFlow: %@ to English translation, style: %@",
+                    preferences.primaryLanguage.rawValue,
+                    preferences.translationStyle.rawValue
+                )
+                let raw = try await engine.transcribe(
+                    samples,
+                    language: preferences.primaryLanguage.rawValue,
+                    primaryLanguage: preferences.primaryLanguage.rawValue
+                )
                 let transcript = raw.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !transcript.isEmpty else {
                     finishProcessing()
@@ -305,12 +368,15 @@ final class AppState {
             TextInserter.insert(final)
             finishProcessing()
         } catch {
-            status = .failed(error.localizedDescription)
+            status = .failed(.init(
+                key: "error.processing_failed",
+                detail: error.localizedDescription
+            ))
         }
     }
 
     /// `recomputeIdleStatus` deliberately refuses to touch a busy status, so the
-    /// end of processing must drop out of the busy state first — otherwise the
+    /// end of processing must drop out of the busy state first, otherwise the
     /// app stays on "Rozpoznaję…" forever.
     private func finishProcessing() {
         status = .idle
@@ -324,7 +390,7 @@ final class AppState {
         do {
             return try await service.clean(transcript)
         } catch {
-            lastWarning = "Cleanup nie zadziałał (\(error.localizedDescription)). Wklejono surowy tekst."
+            lastWarning = .cleanupFailed(error.localizedDescription)
             return transcript
         }
     }
@@ -338,14 +404,20 @@ final class AppState {
             do {
                 return try await service.translate(transcript)
             } catch {
-                lastWarning = "Tłumaczenie przez API nie zadziałało (\(error.localizedDescription)). Użyto tłumaczenia lokalnego."
+                lastWarning = .translationAPIFailed(error.localizedDescription)
             }
         }
 
         do {
-            return try await engine.translateNatively(fallbackSamples)
+            return try await engine.translateNatively(
+                fallbackSamples,
+                language: preferences.primaryLanguage.rawValue
+            )
         } catch {
-            lastWarning = "Tłumaczenie nie zadziałało (\(error.localizedDescription)). Wklejono polski tekst."
+            lastWarning = .translationFailed(
+                error.localizedDescription,
+                preferences.primaryLanguage
+            )
             return transcript
         }
     }

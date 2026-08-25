@@ -2,45 +2,63 @@ import Foundation
 import Observation
 import ServiceManagement
 
-/// The dictation language forced by the user, cycled with TAB while recording.
+enum PrimaryLanguage: String, CaseIterable, Identifiable {
+    case polish = "pl"
+    case italian = "it"
+    case spanish = "es"
+
+    var id: String { rawValue }
+
+    var shortLabel: String { rawValue.uppercased() }
+
+    func label(language: AppLanguage) -> String {
+        L10n.text("language.\(rawValue)", language: language)
+    }
+}
+
+/// The semantic dictation mode. The primary language is configured separately.
 enum LanguageMode: String, CaseIterable, Identifiable {
     case auto
-    case polish = "pl"
+    case primary
     case english = "en"
 
     var id: String { rawValue }
 
-    /// What Whisper gets; nil means run the pl/en detector.
-    var whisperCode: String? {
-        self == .auto ? nil : rawValue
-    }
-
-    var label: String {
+    /// What Whisper gets; nil means run the primary/English detector.
+    func whisperCode(primaryLanguage: PrimaryLanguage) -> String? {
         switch self {
-        case .auto: return "Auto"
-        case .polish: return "Polski"
-        case .english: return "Angielski"
+        case .auto: return nil
+        case .primary: return primaryLanguage.rawValue
+        case .english: return "en"
         }
     }
 
-    var shortLabel: String {
+    func label(primaryLanguage: PrimaryLanguage, language: AppLanguage) -> String {
+        switch self {
+        case .auto: return L10n.text("language.auto", language: language)
+        case .primary: return primaryLanguage.label(language: language)
+        case .english: return L10n.text("language.en", language: language)
+        }
+    }
+
+    func shortLabel(primaryLanguage: PrimaryLanguage) -> String {
         switch self {
         case .auto: return "Auto"
-        case .polish: return "PL"
+        case .primary: return primaryLanguage.shortLabel
         case .english: return "EN"
         }
     }
 
     var next: LanguageMode {
         switch self {
-        case .auto: return .polish
-        case .polish: return .english
+        case .auto: return .primary
+        case .primary: return .english
         case .english: return .auto
         }
     }
 }
 
-/// Output tone, used by both hotkeys: dictation cleanup and PL→EN translation.
+/// Output tone, used by both hotkeys: dictation cleanup and translation to English.
 /// Normal is polished prose; loose is chat-style, lowercase, no full stops.
 enum TextStyle: String, CaseIterable, Identifiable {
     case normal
@@ -48,10 +66,10 @@ enum TextStyle: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var label: String {
+    func label(language: AppLanguage) -> String {
         switch self {
-        case .normal: return "Normalny"
-        case .loose: return "Luźny"
+        case .normal: return L10n.text("style.normal", language: language)
+        case .loose: return L10n.text("style.loose", language: language)
         }
     }
 
@@ -69,6 +87,9 @@ final class Preferences {
         static let dictationHotkey = "dictationHotkey"
         static let translationHotkey = "translationHotkey"
         static let languageMode = "languageMode"
+        static let primaryLanguage = "primaryLanguage"
+        static let appLanguage = "appLanguage"
+        static let selectedInputDeviceUID = "selectedInputDeviceUID"
         static let dictationStyle = "dictationStyle"
         static let translationStyle = "translationStyle"
         static let cleanupEnabled = "cleanupEnabled"
@@ -85,7 +106,7 @@ final class Preferences {
     /// with `launchctl setenv OPENROUTER_API_KEY ...`, not in .zshrc.
     static let apiKeyVariable = "OPENROUTER_API_KEY"
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
 
     var dictationHotkey: HotkeySpec {
         didSet { Self.store(dictationHotkey, in: defaults, forKey: Key.dictationHotkey) }
@@ -97,6 +118,25 @@ final class Preferences {
 
     var languageMode: LanguageMode {
         didSet { defaults.set(languageMode.rawValue, forKey: Key.languageMode) }
+    }
+
+    var primaryLanguage: PrimaryLanguage {
+        didSet { defaults.set(primaryLanguage.rawValue, forKey: Key.primaryLanguage) }
+    }
+
+    var appLanguage: AppLanguage {
+        didSet { defaults.set(appLanguage.rawValue, forKey: Key.appLanguage) }
+    }
+
+    /// Nil follows the current system input device.
+    var selectedInputDeviceUID: String? {
+        didSet {
+            if let selectedInputDeviceUID {
+                defaults.set(selectedInputDeviceUID, forKey: Key.selectedInputDeviceUID)
+            } else {
+                defaults.removeObject(forKey: Key.selectedInputDeviceUID)
+            }
+        }
     }
 
     var dictationStyle: TextStyle {
@@ -156,7 +196,8 @@ final class Preferences {
         }
     }
 
-    init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         defaults.register(defaults: [
             Key.cleanupEnabled: false,
             Key.cleanupBaseURL: CleanupService.defaultBaseURL,
@@ -178,8 +219,15 @@ final class Preferences {
         }
         translationHotkey = Self.loadHotkey(from: defaults, forKey: Key.translationHotkey)
             ?? .rightControl
-        languageMode = defaults.string(forKey: Key.languageMode)
-            .flatMap(LanguageMode.init(rawValue:)) ?? .auto
+        let storedLanguageMode = defaults.string(forKey: Key.languageMode)
+        languageMode = storedLanguageMode == "pl"
+            ? .primary
+            : storedLanguageMode.flatMap(LanguageMode.init(rawValue:)) ?? .auto
+        primaryLanguage = defaults.string(forKey: Key.primaryLanguage)
+            .flatMap(PrimaryLanguage.init(rawValue:)) ?? .polish
+        appLanguage = defaults.string(forKey: Key.appLanguage)
+            .flatMap(AppLanguage.init(rawValue:)) ?? .english
+        selectedInputDeviceUID = defaults.string(forKey: Key.selectedInputDeviceUID)
         dictationStyle = defaults.string(forKey: Key.dictationStyle)
             .flatMap(TextStyle.init(rawValue:)) ?? .normal
         translationStyle = defaults.string(forKey: Key.translationStyle)
@@ -240,7 +288,8 @@ final class Preferences {
             apiKey: apiKey,
             timeout: max(cleanupTimeout, 8),
             customInstructions: customInstructions,
-            style: translationStyle
+            style: translationStyle,
+            sourceLanguage: primaryLanguage
         )
     }
 }

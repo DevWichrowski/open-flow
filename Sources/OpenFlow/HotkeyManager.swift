@@ -24,22 +24,22 @@ struct HotkeySpec: Codable, Equatable, Hashable {
     static let rightCommand = HotkeySpec(keyCode: 54, deviceMask: 0x0000_0010)
     static let rightControl = HotkeySpec(keyCode: 62, deviceMask: 0x0000_2000)
 
-    /// keyCode → (mask, label) for every modifier we accept. Caps Lock is
+    /// keyCode to mask and localization key for every modifier we accept. Caps Lock is
     /// excluded on purpose: it toggles instead of holding.
-    private static let modifiers: [Int64: (mask: UInt64, label: String)] = [
-        54: (0x0000_0010, "Prawy ⌘"),
-        55: (0x0000_0008, "Lewy ⌘"),
-        56: (0x0000_0002, "Lewy ⇧"),
-        60: (0x0000_0004, "Prawy ⇧"),
-        59: (0x0000_0001, "Lewy ⌃"),
-        62: (0x0000_2000, "Prawy ⌃"),
-        58: (0x0000_0020, "Lewy ⌥"),
-        61: (0x0000_0040, "Prawy ⌥"),
-        63: (CGEventFlags.maskSecondaryFn.rawValue, "🌐 Fn"),
+    private static let modifiers: [Int64: (mask: UInt64, labelKey: String)] = [
+        54: (0x0000_0010, "hotkey.right_command"),
+        55: (0x0000_0008, "hotkey.left_command"),
+        56: (0x0000_0002, "hotkey.left_shift"),
+        60: (0x0000_0004, "hotkey.right_shift"),
+        59: (0x0000_0001, "hotkey.left_control"),
+        62: (0x0000_2000, "hotkey.right_control"),
+        58: (0x0000_0020, "hotkey.left_option"),
+        61: (0x0000_0040, "hotkey.right_option"),
+        63: (CGEventFlags.maskSecondaryFn.rawValue, "hotkey.fn"),
     ]
 
     private static let specialKeys: [Int64: String] = [
-        36: "Return", 49: "Spacja", 51: "⌫ Delete", 76: "Enter",
+        36: "Return", 51: "⌫ Delete", 76: "Enter",
         114: "Help", 115: "Home", 116: "Page Up", 117: "⌦ Delete",
         119: "End", 121: "Page Down",
         123: "←", 124: "→", 125: "↓", 126: "↑",
@@ -54,18 +54,22 @@ struct HotkeySpec: Codable, Equatable, Hashable {
         return HotkeySpec(keyCode: keyCode, deviceMask: entry.mask)
     }
 
-    var label: String {
-        if isModifier, let entry = Self.modifiers[keyCode] { return entry.label }
+    func label(language: AppLanguage) -> String {
+        if isModifier, let entry = Self.modifiers[keyCode] {
+            return L10n.text(entry.labelKey, language: language)
+        }
+        if keyCode == 49 { return L10n.text("hotkey.space", language: language) }
         if let name = Self.specialKeys[keyCode] { return name }
-        return Self.printableName(for: keyCode) ?? "Klawisz \(keyCode)"
+        return Self.printableName(for: keyCode)
+            ?? L10n.text("hotkey.key", language: language, keyCode)
     }
 
-    var note: String? {
+    func note(language: AppLanguage) -> String? {
         switch keyCode {
         case 61:
-            return "Uwaga: na polskim układzie „Polish Pro” prawy Option służy do wpisywania ą, ć, ę, ł, ń, ó, ś, ź, ż."
+            return L10n.text("hotkey.note.right_option", language: language)
         case 63:
-            return "Wymaga ustawienia Ustawienia systemowe → Klawiatura → „Naciśnięcie klawisza 🌐” na „Nic nie rób”."
+            return L10n.text("hotkey.note.fn", language: language)
         default:
             return nil
         }

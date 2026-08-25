@@ -11,17 +11,18 @@ struct TranslationService {
         var timeout: TimeInterval
         var customInstructions: String
         var style: TextStyle
+        var sourceLanguage: PrimaryLanguage
     }
 
     private static let basePrompt = """
     You are a dictation translator for a software developer. You receive a raw \
-    speech-to-text transcript, usually in Polish, sometimes mixing in English \
-    words. Your output is ALWAYS in English.
+    speech-to-text transcript in the source language stated below, sometimes \
+    mixing in English words. Your output is ALWAYS in English.
 
     Rules:
     - Translate the transcript into English.
-    - Remove filler sounds and verbal stumbles: "yyy", "eee", "hmm", "no więc" \
-      used as filler, false starts, stuttered repetitions.
+    - Remove filler sounds and verbal stumbles appropriate to the source language, \
+      including false starts and stuttered repetitions.
     - The speaker is a programmer. Keep technical terms, product names and code \
       identifiers exactly as spoken (feature, PR, merge request, commit, deploy, \
       branch, code review, backlog, standup, endpoint, bug...). Fix them if the \
@@ -87,6 +88,7 @@ struct TranslationService {
         else { throw CleanupService.CleanupError.badURL }
 
         var systemContent = Self.basePrompt
+        systemContent += "\n\nSource language: \(configuration.sourceLanguage.rawValue)."
         systemContent += configuration.style == .loose ? Self.looseStyle : Self.normalStyle
         let extra = configuration.customInstructions.trimmingCharacters(in: .whitespacesAndNewlines)
         if !extra.isEmpty {

@@ -6,6 +6,8 @@
 	<string>OpenFlow</string>
 	<key>CFBundleDisplayName</key>
 	<string>OpenFlow</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.openflow.app</string>
 	<key>CFBundleExecutable</key>
@@ -28,6 +30,6 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>OpenFlow nagrywa Twój głos, gdy trzymasz skrót dyktowania, i zamienia go na tekst na tym Macu.</string>
+	<string>OpenFlow records your voice while you hold the dictation hotkey and converts it to text locally on this Mac.</string>
 </dict>
 </plist>

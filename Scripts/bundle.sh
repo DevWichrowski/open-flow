@@ -27,12 +27,19 @@ echo "==> swift build -c $CONFIG"
 cd "$ROOT"
 swift build -c "$CONFIG"
 BINARY="$(swift build -c "$CONFIG" --show-bin-path)/OpenFlow"
+RESOURCE_BUNDLE="$(dirname "$BINARY")/OpenFlow_OpenFlow.bundle"
 
 echo "==> assembling $APP"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BINARY" "$APP/Contents/MacOS/OpenFlow"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
+cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/OpenFlow_OpenFlow.bundle"
+for STRINGS in "$RESOURCE_BUNDLE"/*.lproj/InfoPlist.strings; do
+	LOCALE="$(basename "$(dirname "$STRINGS")")"
+	mkdir -p "$APP/Contents/Resources/$LOCALE"
+	cp "$STRINGS" "$APP/Contents/Resources/$LOCALE/InfoPlist.strings"
+done
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
 echo "==> codesign ($IDENTITY)"
