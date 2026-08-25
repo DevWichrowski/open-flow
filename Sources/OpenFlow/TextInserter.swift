@@ -17,27 +17,49 @@ enum TextInserter {
         let snapshot = capture(pasteboard)
 
         pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
+        guard pasteboard.setString(text, forType: .string) else {
+            restore(snapshot, to: pasteboard)
+            return
+        }
+        let insertedChangeCount = pasteboard.changeCount
 
-        sendPasteShortcut()
+        guard sendPasteShortcut() else {
+            restore(snapshot, to: pasteboard)
+            return
+        }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + restoreDelay) {
+            // Do not erase something the user copied while the target app was
+            // consuming the temporary transcript.
+            guard shouldRestorePasteboard(
+                insertedChangeCount: insertedChangeCount,
+                currentChangeCount: pasteboard.changeCount
+            ) else { return }
             restore(snapshot, to: pasteboard)
         }
     }
 
-    private static func sendPasteShortcut() {
-        guard let source = CGEventSource(stateID: .combinedSessionState) else { return }
+    static func shouldRestorePasteboard(
+        insertedChangeCount: Int,
+        currentChangeCount: Int
+    ) -> Bool {
+        insertedChangeCount == currentChangeCount
+    }
 
-        let down = CGEvent(keyboardEventSource: source, virtualKey: virtualKeyV, keyDown: true)
-        let up = CGEvent(keyboardEventSource: source, virtualKey: virtualKeyV, keyDown: false)
+    private static func sendPasteShortcut() -> Bool {
+        guard let source = CGEventSource(stateID: .combinedSessionState),
+              let down = CGEvent(keyboardEventSource: source, virtualKey: virtualKeyV, keyDown: true),
+              let up = CGEvent(keyboardEventSource: source, virtualKey: virtualKeyV, keyDown: false)
+        else { return false }
+
         // Assigning rather than OR-ing drops any modifier the user happens to be
         // holding, which would otherwise turn ⌘V into ⌘⇧V or similar.
-        down?.flags = .maskCommand
-        up?.flags = .maskCommand
+        down.flags = .maskCommand
+        up.flags = .maskCommand
 
-        down?.post(tap: .cghidEventTap)
-        up?.post(tap: .cghidEventTap)
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
+        return true
     }
 
     private static func capture(_ pasteboard: NSPasteboard) -> [[NSPasteboard.PasteboardType: Data]] {

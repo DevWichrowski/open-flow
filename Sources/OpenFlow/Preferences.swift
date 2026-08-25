@@ -77,6 +77,23 @@ enum TextStyle: String, CaseIterable, Identifiable {
     var next: TextStyle {
         self == .normal ? .loose : .normal
     }
+
+    /// Models keep adding sentence-ending periods no matter how the loose
+    /// prompt is worded, so they are stripped here. Ellipses, "?" and "!"
+    /// are left alone.
+    func finish(_ text: String) -> String {
+        guard self == .loose else { return text }
+        return text
+            .components(separatedBy: "\n")
+            .map { line in
+                var trimmed = Substring(line.trimmingCharacters(in: .whitespaces))
+                while trimmed.hasSuffix("."), !trimmed.hasSuffix("...") {
+                    trimmed = trimmed.dropLast()
+                }
+                return String(trimmed)
+            }
+            .joined(separator: "\n")
+    }
 }
 
 /// User-facing settings. Everything lives in UserDefaults except the API key,

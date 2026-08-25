@@ -57,36 +57,11 @@ struct TranslationService {
     - a sentence that is a question MUST end with "?"
     """
 
-    private struct ChatRequest: Encodable {
-        struct Message: Encodable {
-            let role: String
-            let content: String
-        }
-        let model: String
-        let messages: [Message]
-        let temperature: Double
-        let stream: Bool
-    }
-
-    private struct ChatResponse: Decodable {
-        struct Choice: Decodable {
-            struct Message: Decodable { let content: String? }
-            let message: Message?
-        }
-        let choices: [Choice]?
-    }
-
     let configuration: Configuration
 
     func translate(_ transcript: String) async throws -> String {
         let trimmed = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return trimmed }
-        guard !configuration.apiKey.isEmpty else { throw CleanupService.CleanupError.missingAPIKey }
-
-        guard let url = URL(string: configuration.baseURL.trimmingCharacters(in: .whitespaces))?
-            .appendingPathComponent("chat/completions")
-        else { throw CleanupService.CleanupError.badURL }
-
         var systemContent = Self.basePrompt
         systemContent += "\n\nSource language: \(configuration.sourceLanguage.rawValue)."
         systemContent += configuration.style == .loose ? Self.looseStyle : Self.normalStyle
@@ -95,34 +70,17 @@ struct TranslationService {
             systemContent += "\n\nAdditional user-specific rules (spellings, names, preferences):\n\(extra)"
         }
 
-        let payload = ChatRequest(
+        let client = ChatCompletionClient(configuration: .init(
+            baseURL: configuration.baseURL,
             model: configuration.model,
-            messages: [
-                .init(role: "system", content: systemContent),
-                .init(role: "user", content: trimmed),
-            ],
-            temperature: configuration.style == .loose ? 0.4 : 0,
-            stream: false
+            apiKey: configuration.apiKey,
+            timeout: configuration.timeout
+        ))
+        let content = try await client.complete(
+            systemPrompt: systemContent,
+            userContent: trimmed,
+            temperature: configuration.style == .loose ? 0.4 : 0
         )
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.timeoutInterval = configuration.timeout
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(configuration.apiKey)", forHTTPHeaderField: "Authorization")
-        request.httpBody = try JSONEncoder().encode(payload)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            throw CleanupService.CleanupError.http(status: http.statusCode, body: String(decoding: data, as: UTF8.self))
-        }
-
-        let decoded = try JSONDecoder().decode(ChatResponse.self, from: data)
-        let content = decoded.choices?.first?.message?.content?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !content.isEmpty else { throw CleanupService.CleanupError.emptyResponse }
-
-        return content
+        return configuration.style.finish(content)
     }
 }

@@ -60,6 +60,9 @@ actor TranscriptionEngine {
 
     private var pipeline: WhisperKit?
     private var loadedModel: String?
+    /// Actor methods are reentrant while loading Core ML, so only the newest
+    /// model request may publish its pipeline after an await.
+    private var modelLoadGeneration = 0
     /// Loaded on the first fallback translation while a turbo model is selected,
     /// or at startup via `warmUpTranslation()`.
     private var translationPipeline: WhisperKit?
@@ -112,11 +115,15 @@ actor TranscriptionEngine {
             return
         }
 
+        modelLoadGeneration += 1
+        let generation = modelLoadGeneration
         pipeline = nil
         loadedModel = nil
 
         do {
-            pipeline = try await Self.loadPipeline(model: model, report: report)
+            let loaded = try await Self.loadPipeline(model: model, report: report)
+            guard generation == modelLoadGeneration else { return }
+            pipeline = loaded
             loadedModel = model
             if Self.supportsTranslation(model) {
                 translationPipeline = nil
@@ -125,6 +132,7 @@ actor TranscriptionEngine {
         } catch is CancellationError {
             // A newer prepare() superseded this one; it will report its own state.
         } catch {
+            guard generation == modelLoadGeneration else { return }
             report(.failed(error.localizedDescription))
         }
     }
@@ -198,7 +206,7 @@ actor TranscriptionEngine {
 
         let results = try await pipeline.transcribe(audioArray: samples, decodeOptions: options)
         let text = results.map(\.text).joined(separator: " ")
-        return Self.stripHallucinations(text)
+        return TranscriptPostprocessor.process(text)
     }
 
     /// Whisper's built-in speech translation to English. Quality is below the
@@ -222,7 +230,7 @@ actor TranscriptionEngine {
 
         let results = try await pipeline.transcribe(audioArray: samples, decodeOptions: options)
         let text = results.map(\.text).joined(separator: " ")
-        return Self.stripHallucinations(text)
+        return TranscriptPostprocessor.process(text)
     }
 
     /// Without an API key every translation goes through the local fallback,
@@ -265,38 +273,8 @@ actor TranscriptionEngine {
         }
     }
 
-    /// Picks the configured primary language or English.
-    ///
-    /// English wins only when it is clearly ahead. Dev-speak Polish is full of
-    /// English terms ("code review", "PR", "deploy"), which drags the detector
-    /// towards `en`; a mistaken `en` makes Whisper *translate* Polish speech
-    /// instead of transcribing it, which is the worst possible failure. A
-    /// mistaken `pl` on English speech merely garbles a dictation that the
-    /// user can redo with TAB→EN.
-    private static let englishMargin: Float = 0.2
-
-    static func resolvedLanguage(
-        probabilities: [String: Float],
-        primaryLanguage: String
-    ) -> String {
-        let primary = probabilities[primaryLanguage] ?? 0
-        let english = probabilities["en"] ?? 0
-        return english > primary + englishMargin ? "en" : primaryLanguage
-    }
-
-    /// Softmax over the language tokens only, matching how Whisper itself
-    /// picks a language.
-    static func languageProbabilities(logits: [String: Float]) -> [String: Float] {
-        guard let maxLogit = logits.values.max() else { return [:] }
-        let scaled = logits.mapValues { exp($0 - maxLogit) }
-        let total = scaled.values.reduce(0, +)
-        return scaled.mapValues { $0 / total }
-    }
-
-    /// WhisperKit's `detectLangauge` reports only the winning language, and as
-    /// a log-probability, so a primary-versus-English comparison is impossible
-    /// with it. This runs the same single decoder step over the first 30 s and
-    /// keeps the whole distribution.
+    /// WhisperKit's winning-language helper does not expose the full token
+    /// distribution. Run one decoder step while the pipeline remains actor-owned.
     private func languageProbabilities(
         _ samples: [Float],
         using pipeline: WhisperKit
@@ -329,12 +307,11 @@ actor TranscriptionEngine {
 
         var languageLogits: [String: Float] = [:]
         for token in tokenizer.allLanguageTokens {
-            // Language tokens look like "<|en|>".
             guard let name = tokenizer.convertIdToToken(token) else { continue }
             let code = name.trimmingCharacters(in: CharacterSet(charactersIn: "<|>"))
             languageLogits[code] = logits[[0, 0, token] as [NSNumber]].floatValue
         }
-        return Self.languageProbabilities(logits: languageLogits)
+        return LanguageDetector.probabilities(logits: languageLogits)
     }
 
     private func detectLanguage(
@@ -346,7 +323,7 @@ actor TranscriptionEngine {
             let probabilities = try await languageProbabilities(samples, using: pipeline)
             let primary = probabilities[primaryLanguage] ?? 0
             let english = probabilities["en"] ?? 0
-            let language = Self.resolvedLanguage(
+            let language = LanguageDetector.resolvedLanguage(
                 probabilities: probabilities,
                 primaryLanguage: primaryLanguage
             )
@@ -368,32 +345,4 @@ actor TranscriptionEngine {
         }
     }
 
-    /// Whisper was trained on subtitle dumps, so near-silence makes it emit
-    /// boilerplate credits. Drop those instead of pasting them.
-    private static let hallucinations = [
-        "napisy stworzone przez społeczność amara.org",
-        "napisy: społeczność amara.org",
-        "subtitles by the amara.org community",
-        "zdjęcia i napisy: amara.org",
-        "dziękuję za uwagę",
-        "thanks for watching",
-        "thank you for watching",
-        "thank you",
-        "you",
-    ]
-
-    private static func stripHallucinations(_ text: String) -> String {
-        var lines = text
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-
-        lines.removeAll { line in
-            let normalized = line
-                .lowercased()
-                .trimmingCharacters(in: CharacterSet(charactersIn: " .,!?-–—[]()"))
-            return normalized.isEmpty || hallucinations.contains(normalized)
-        }
-
-        return lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-    }
 }
