@@ -105,6 +105,11 @@
 "indicator.cleaning" = "Подобрявам…";
 "indicator.translating" = "Превеждам…";
 
+"translation_model.downloading" = "Изтегляне на модела за превод… %d%%";
+"translation_model.loading" = "Зареждане на модела за превод… (първия път отнема няколко минути)";
+"translation_model.failed" = "Моделът за превод не можа да бъде подготвен: %@";
+"indicator.loading_translation_model" = "Зареждам модела за превод…";
+
 "error.hotkey_in_use" = "%@ вече е зададен за другата клавишна комбинация.";
 "error.model_prepare" = "Моделът не можа да бъде подготвен: %@";
 "error.recording_failed" = "Записът не можа да започне: %@";

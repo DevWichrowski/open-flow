@@ -59,6 +59,33 @@ final class AppState {
         }
     }
 
+    /// The offline translation model that sits next to a turbo model. Shown in
+    /// the menu and the indicator, because a cold large-v3 load takes minutes
+    /// and must not look like a hang.
+    enum TranslationModelState: Equatable {
+        case idle
+        case downloading(Double)
+        case loading
+        case ready
+        case failed(String)
+
+        init(_ state: TranscriptionEngine.PrepareState) {
+            switch state {
+            case .downloading(let progress): self = .downloading(progress)
+            case .loading: self = .loading
+            case .ready: self = .ready
+            case .failed(let message): self = .failed(message)
+            }
+        }
+
+        var isPreparing: Bool {
+            switch self {
+            case .downloading, .loading: return true
+            default: return false
+            }
+        }
+    }
+
     /// Which hotkey started the current recording.
     enum DictationMode {
         case dictate
@@ -71,6 +98,7 @@ final class AppState {
 
     private(set) var status: Status = .idle
     private(set) var currentMode: DictationMode = .dictate
+    private(set) var translationModelState: TranslationModelState = .idle
     private(set) var lastTranscript: String = ""
     /// Set when cleanup failed but we pasted the raw transcript anyway.
     private(set) var lastWarning: Notice?
@@ -216,6 +244,7 @@ final class AppState {
     func loadModel() async {
         modelReady = false
         modelProgress = 0
+        translationModelState = .idle
 
         for await state in engine.prepare(model: preferences.whisperModel) {
             switch state {
@@ -228,8 +257,25 @@ final class AppState {
             case .ready:
                 modelReady = true
                 recomputeIdleStatus()
+                warmUpTranslationIfNeeded()
             case .failed(let message):
                 status = .failed(.init(key: "error.model_prepare", detail: message))
+            }
+        }
+    }
+
+    /// Without an API key every translation uses the local fallback model, so
+    /// load it in the background now rather than on the first translate press.
+    private func warmUpTranslationIfNeeded() {
+        guard preferences.apiKey.isEmpty else { return }
+        Task { await engine.warmUpTranslation(report: translationModelReporter()) }
+    }
+
+    /// Bridges the engine's load progress onto the main actor for the UI.
+    private func translationModelReporter() -> (TranscriptionEngine.PrepareState) -> Void {
+        { state in
+            Task { @MainActor [weak self] in
+                self?.translationModelState = .init(state)
             }
         }
     }
@@ -411,7 +457,8 @@ final class AppState {
         do {
             return try await engine.translateNatively(
                 fallbackSamples,
-                language: preferences.primaryLanguage.rawValue
+                language: preferences.primaryLanguage.rawValue,
+                report: translationModelReporter()
             )
         } catch {
             lastWarning = .translationFailed(

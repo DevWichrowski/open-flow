@@ -154,7 +154,7 @@ the Personal Dictionary.
 | Situation | OpenFlow response |
 | --- | --- |
 | AI API unavailable | Pastes the raw local transcript |
-| Translation API unavailable | Translates locally with Whisper large-v3 (downloaded once, ~950 MB, because turbo cannot translate) |
+| Translation API unavailable | Translates locally with Whisper large-v3 (~950 MB, because turbo cannot translate); without an API key it is loaded at startup |
 | Selected microphone disconnected | Uses the current system input |
 | Recording shorter than 0.35 seconds | Ignores the accidental tap |
 | Known silence hallucination | Removes it before pasting |
@@ -220,7 +220,9 @@ Set `OPENROUTER_API_KEY` with `launchctl setenv`, then restart OpenFlow.
   the full language distribution and compares the configured primary language
   with English using a conservative English margin.
 - `large-v3-turbo` was fine-tuned on transcription only, so offline translation
-  lazily loads a compact `large-v3` next to it.
+  loads a compact `large-v3` next to it: at startup when there is no API key,
+  otherwise on the first fallback. The menu and the indicator show that load,
+  since a cold Core ML load of large-v3 takes a few minutes.
 - A global `CGEventTap` handles both push-to-talk keys and consumes TAB while recording.
 - The recording indicator uses a floating AppKit panel visible over full-screen apps.
 - Models live in Application Support and are downloaded only when missing.

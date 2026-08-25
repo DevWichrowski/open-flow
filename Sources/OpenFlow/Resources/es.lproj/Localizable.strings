@@ -96,6 +96,11 @@
 "indicator.transcribing" = "Reconociendo…";
 "indicator.cleaning" = "Mejorando…";
 "indicator.translating" = "Traduciendo…";
+
+"translation_model.downloading" = "Descargando modelo de traducción… %d%%";
+"translation_model.loading" = "Cargando modelo de traducción… (la primera vez tarda unos minutos)";
+"translation_model.failed" = "No se pudo preparar el modelo de traducción: %@";
+"indicator.loading_translation_model" = "Cargando modelo de traducción…";
 "error.hotkey_in_use" = "%@ ya está asignado al otro atajo.";
 "error.model_prepare" = "No se pudo preparar el modelo: %@";
 "error.recording_failed" = "No se pudo iniciar la grabación: %@";

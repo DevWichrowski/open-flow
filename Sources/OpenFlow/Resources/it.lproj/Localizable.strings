@@ -96,6 +96,11 @@
 "indicator.transcribing" = "Riconoscimento…";
 "indicator.cleaning" = "Miglioramento…";
 "indicator.translating" = "Traduzione…";
+
+"translation_model.downloading" = "Download del modello di traduzione… %d%%";
+"translation_model.loading" = "Caricamento del modello di traduzione… (la prima volta richiede qualche minuto)";
+"translation_model.failed" = "Impossibile preparare il modello di traduzione: %@";
+"indicator.loading_translation_model" = "Caricamento del modello di traduzione…";
 "error.hotkey_in_use" = "%@ è già assegnato all'altra scorciatoia.";
 "error.model_prepare" = "Impossibile preparare il modello: %@";
 "error.recording_failed" = "Impossibile avviare la registrazione: %@";

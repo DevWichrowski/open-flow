@@ -96,6 +96,11 @@
 "indicator.transcribing" = "Rozpoznaję…";
 "indicator.cleaning" = "Poprawiam…";
 "indicator.translating" = "Tłumaczę…";
+
+"translation_model.downloading" = "Pobieranie modelu tłumaczeń… %d%%";
+"translation_model.loading" = "Ładowanie modelu tłumaczeń… (za pierwszym razem trwa kilka minut)";
+"translation_model.failed" = "Nie udało się przygotować modelu tłumaczeń: %@";
+"indicator.loading_translation_model" = "Ładuję model tłumaczeń…";
 "error.hotkey_in_use" = "%@ jest już przypisany do drugiego skrótu.";
 "error.model_prepare" = "Nie udało się przygotować modelu: %@";
 "error.recording_failed" = "Nie udało się rozpocząć nagrywania: %@";

@@ -60,8 +60,12 @@ actor TranscriptionEngine {
 
     private var pipeline: WhisperKit?
     private var loadedModel: String?
-    /// Loaded lazily on the first fallback translation while a turbo model is selected.
+    /// Loaded on the first fallback translation while a turbo model is selected,
+    /// or at startup via `warmUpTranslation()`.
     private var translationPipeline: WhisperKit?
+    /// Set while a load is in flight, so a hotkey press during the warm-up
+    /// waits for it instead of starting a second one.
+    private var isLoadingTranslation = false
 
     /// Multi-gigabyte Core ML models do not belong in ~/Documents, which is
     /// where the HuggingFace client puts them by default.
@@ -200,8 +204,12 @@ actor TranscriptionEngine {
     /// Whisper's built-in speech translation to English. Quality is below the
     /// LLM pass but it runs fully offline, so it is the fallback when the
     /// translate hotkey has no API key or the network fails.
-    func translateNatively(_ samples: [Float], language: String) async throws -> String {
-        let pipeline = try await translationPipeline()
+    func translateNatively(
+        _ samples: [Float],
+        language: String,
+        report: @escaping (PrepareState) -> Void
+    ) async throws -> String {
+        let pipeline = try await translationPipeline(report: report)
 
         let options = DecodingOptions(
             task: .translate,
@@ -217,21 +225,44 @@ actor TranscriptionEngine {
         return Self.stripHallucinations(text)
     }
 
+    /// Without an API key every translation goes through the local fallback,
+    /// so its model is loaded at startup instead of on the first hotkey press,
+    /// where a cold large-v3 load can stall on "Translating…" for minutes.
+    /// `report` drives the loader shown in the menu.
+    func warmUpTranslation(report: @escaping (PrepareState) -> Void) async {
+        do {
+            _ = try await translationPipeline(report: report)
+        } catch {
+            NSLog("OpenFlow: translation model warm-up failed: %@", error.localizedDescription)
+        }
+    }
+
     /// The main pipeline when its model can translate, otherwise a dedicated
-    /// large-v3 that is downloaded and loaded on first use and then kept.
-    private func translationPipeline() async throws -> WhisperKit {
+    /// large-v3 that is downloaded and loaded once and then kept.
+    private func translationPipeline(
+        report: @escaping (PrepareState) -> Void
+    ) async throws -> WhisperKit {
         guard let pipeline, let loadedModel else { throw EngineError.notReady }
         if Self.supportsTranslation(loadedModel) { return pipeline }
         if let translationPipeline { return translationPipeline }
+        while isLoadingTranslation {
+            try await Task.sleep(for: .milliseconds(200))
+        }
+        if let translationPipeline { return translationPipeline }
 
         NSLog("OpenFlow: %@ cannot translate, loading %@", loadedModel, Self.translationModel)
-        let loaded = try await Self.loadPipeline(model: Self.translationModel) { state in
-            if case .downloading(let progress) = state {
-                NSLog("OpenFlow: translation model download %.0f%%", progress * 100)
-            }
+        isLoadingTranslation = true
+        defer { isLoadingTranslation = false }
+        do {
+            let loaded = try await Self.loadPipeline(model: Self.translationModel, report: report)
+            translationPipeline = loaded
+            NSLog("OpenFlow: translation model ready")
+            report(.ready)
+            return loaded
+        } catch {
+            report(.failed(error.localizedDescription))
+            throw error
         }
-        translationPipeline = loaded
-        return loaded
     }
 
     /// Picks the configured primary language or English.

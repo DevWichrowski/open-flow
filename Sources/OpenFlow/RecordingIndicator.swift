@@ -109,7 +109,10 @@ private struct IndicatorView: View {
         case .recording: return t("indicator.listening")
         case .transcribing: return t("indicator.transcribing")
         case .cleaning: return t("indicator.cleaning")
-        case .translating: return t("indicator.translating")
+        case .translating:
+            return state.translationModelState.isPreparing
+                ? t("indicator.loading_translation_model")
+                : t("indicator.translating")
         default: return ""
         }
     }

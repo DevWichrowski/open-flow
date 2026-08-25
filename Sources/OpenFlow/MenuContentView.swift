@@ -16,6 +16,15 @@ struct MenuContentView: View {
                 permissionsSection
             }
 
+            if state.translationModelState.isPreparing {
+                translationModelSection
+            } else if case .failed(let detail) = state.translationModelState {
+                Label(t("translation_model.failed", detail), systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             if let warning = state.lastWarning {
                 Label(warning.message(language: language), systemImage: "exclamationmark.triangle")
                     .font(.caption)
@@ -132,6 +141,27 @@ struct MenuContentView: View {
                     openPrivacyPane("Privacy_Accessibility")
                 }
                 .controlSize(.small)
+            }
+        }
+    }
+
+    /// Offline translation model download/load, so a multi-minute first load
+    /// reads as progress rather than a frozen app.
+    private var translationModelSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if case .downloading(let progress) = state.translationModelState {
+                Label(t("translation_model.downloading", Int(progress * 100)), systemImage: "arrow.down.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                ProgressView(value: progress)
+                    .progressViewStyle(.linear)
+            } else {
+                Label(t("translation_model.loading"), systemImage: "arrow.down.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                ProgressView()
+                    .progressViewStyle(.linear)
             }
         }
     }

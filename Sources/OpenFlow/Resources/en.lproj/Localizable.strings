@@ -105,6 +105,11 @@
 "indicator.cleaning" = "Improving…";
 "indicator.translating" = "Translating…";
 
+"translation_model.downloading" = "Downloading translation model… %d%%";
+"translation_model.loading" = "Loading translation model… (the first time takes a few minutes)";
+"translation_model.failed" = "The translation model could not be prepared: %@";
+"indicator.loading_translation_model" = "Loading translation model…";
+
 "error.hotkey_in_use" = "%@ is already assigned to the other hotkey.";
 "error.model_prepare" = "The model could not be prepared: %@";
 "error.recording_failed" = "Recording could not start: %@";
