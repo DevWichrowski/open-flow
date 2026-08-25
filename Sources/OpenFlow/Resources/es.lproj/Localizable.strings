@@ -40,6 +40,11 @@
 "permissions.accessibility_missing" = "Falta el permiso de Accesibilidad";
 "permissions.accessibility_help" = "Necesario para detectar atajos y pegar texto.";
 "permissions.request" = "Solicitar permiso";
+"permissions.window_title" = "OpenFlow necesita dos permisos";
+"permissions.window_subtitle" = "Concédelos una vez en Ajustes del Sistema. OpenFlow lo detecta solo y esta ventana se cierra cuando todo esté listo.";
+"permissions.microphone_help" = "Graba tu voz mientras mantienes pulsado el atajo.";
+"permissions.open_settings" = "Abrir Ajustes del Sistema";
+"permissions.later" = "Más tarde";
 "settings.general" = "General";
 "settings.ai_cleanup" = "Limpieza con IA";
 "settings.interface_language" = "Idioma de la interfaz";

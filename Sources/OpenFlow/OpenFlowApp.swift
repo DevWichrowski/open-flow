@@ -26,11 +26,37 @@ struct OpenFlowApp: App {
 /// the indicator panel needs AppKit anyway.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var indicator: RecordingIndicator?
+    private var permissions: PermissionsWindow?
+    private var rightClickMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         indicator = RecordingIndicator(state: .shared)
+        permissions = PermissionsWindow(state: .shared)
+        installRightClickQuit()
         Task { await AppState.shared.start() }
+    }
+
+    /// `MenuBarExtra` has no right-click hook, so catch the click on the
+    /// status item's own window and offer Quit there.
+    private func installRightClickQuit() {
+        rightClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .rightMouseDown) { event in
+            guard let window = event.window,
+                  window.className == "NSStatusBarWindow",
+                  let view = window.contentView
+            else { return event }
+
+            let menu = NSMenu()
+            let quit = NSMenuItem(
+                title: L10n.text("common.quit", language: AppState.shared.preferences.appLanguage),
+                action: #selector(NSApplication.terminate(_:)),
+                keyEquivalent: "q"
+            )
+            quit.target = NSApp
+            menu.addItem(quit)
+            NSMenu.popUpContextMenu(menu, with: event, for: view)
+            return nil
+        }
     }
 }
 

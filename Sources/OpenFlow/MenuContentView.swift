@@ -3,7 +3,37 @@ import SwiftUI
 struct MenuContentView: View {
     @Bindable var state: AppState
 
+    /// A `ScrollView` inside the `MenuBarExtra` window gets no height proposal
+    /// and collapses to nothing, so the content height is measured and set
+    /// explicitly, capped so the popover never grows past a small display.
+    @State private var contentHeight: CGFloat = 0
+
     var body: some View {
+        ScrollView {
+            content
+                .padding(14)
+                .background(GeometryReader { proxy in
+                    Color.clear.preference(key: ContentHeightKey.self, value: proxy.size.height)
+                })
+        }
+        .onPreferenceChange(ContentHeightKey.self) { contentHeight = $0 }
+        .frame(width: 320)
+        .frame(height: min(contentHeight, maxContentHeight))
+    }
+
+    /// Leaves room for the menu bar and a margin below the popover.
+    private var maxContentHeight: CGFloat {
+        (NSScreen.main?.visibleFrame.height ?? 700) - 140
+    }
+
+    private struct ContentHeightKey: PreferenceKey {
+        static let defaultValue: CGFloat = 0
+        static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+            value = max(value, nextValue())
+        }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
 
@@ -101,8 +131,6 @@ struct MenuContentView: View {
             }
             .controlSize(.small)
         }
-        .padding(14)
-        .frame(width: 320)
     }
 
     private var header: some View {

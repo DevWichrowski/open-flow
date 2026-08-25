@@ -45,6 +45,11 @@
 "permissions.accessibility_missing" = "Accessibility permission is missing";
 "permissions.accessibility_help" = "Required to detect hotkeys and paste text.";
 "permissions.request" = "Request Permission";
+"permissions.window_title" = "OpenFlow needs two permissions";
+"permissions.window_subtitle" = "Grant them once in System Settings. OpenFlow notices on its own and this window closes when everything is set.";
+"permissions.microphone_help" = "Records your voice while you hold the hotkey.";
+"permissions.open_settings" = "Open System Settings";
+"permissions.later" = "Later";
 
 "settings.general" = "General";
 "settings.ai_cleanup" = "AI Cleanup";

@@ -40,6 +40,11 @@
 "permissions.accessibility_missing" = "Permesso Accessibilità assente";
 "permissions.accessibility_help" = "Necessario per rilevare le scorciatoie e incollare il testo.";
 "permissions.request" = "Richiedi permesso";
+"permissions.window_title" = "OpenFlow ha bisogno di due permessi";
+"permissions.window_subtitle" = "Concedili una volta nelle Impostazioni di Sistema. OpenFlow se ne accorge da solo e questa finestra si chiude quando tutto è pronto.";
+"permissions.microphone_help" = "Registra la tua voce mentre tieni premuta la scorciatoia.";
+"permissions.open_settings" = "Apri Impostazioni di Sistema";
+"permissions.later" = "Più tardi";
 "settings.general" = "Generali";
 "settings.ai_cleanup" = "Pulizia AI";
 "settings.interface_language" = "Lingua dell'interfaccia";

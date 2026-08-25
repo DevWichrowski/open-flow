@@ -40,6 +40,11 @@
 "permissions.accessibility_missing" = "Brak uprawnienia Dostępność";
 "permissions.accessibility_help" = "Potrzebne do wykrywania skrótów i wklejania tekstu.";
 "permissions.request" = "Poproś o uprawnienie";
+"permissions.window_title" = "OpenFlow potrzebuje dwóch uprawnień";
+"permissions.window_subtitle" = "Nadaj je raz w Ustawieniach systemowych. OpenFlow sam to wykryje i to okno zamknie się, gdy wszystko będzie gotowe.";
+"permissions.microphone_help" = "Nagrywa Twój głos, gdy trzymasz skrót.";
+"permissions.open_settings" = "Otwórz Ustawienia systemowe";
+"permissions.later" = "Później";
 "settings.general" = "Ogólne";
 "settings.ai_cleanup" = "Poprawianie AI";
 "settings.interface_language" = "Język interfejsu";

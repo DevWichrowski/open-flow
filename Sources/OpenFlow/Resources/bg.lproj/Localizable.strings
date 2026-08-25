@@ -45,6 +45,11 @@
 "permissions.accessibility_missing" = "Липсва разрешение за Достъпност";
 "permissions.accessibility_help" = "Необходимо е за разпознаване на клавишните комбинации и поставяне на текст.";
 "permissions.request" = "Поискай разрешение";
+"permissions.window_title" = "OpenFlow се нуждае от две разрешения";
+"permissions.window_subtitle" = "Дайте ги веднъж в Системните настройки. OpenFlow ще ги засече сам и този прозорец ще се затвори, когато всичко е готово.";
+"permissions.microphone_help" = "Записва гласа ви, докато държите клавишната комбинация.";
+"permissions.open_settings" = "Отвори Системните настройки";
+"permissions.later" = "По-късно";
 
 "settings.general" = "Общи";
 "settings.ai_cleanup" = "AI подобрение";

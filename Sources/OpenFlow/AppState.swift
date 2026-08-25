@@ -108,6 +108,9 @@ final class AppState {
 
     var hasMicrophonePermission = false
     var hasAccessibilityPermission = false
+    /// False until `start()` has asked the system once, so the permissions
+    /// window does not flash before the microphone prompt.
+    private(set) var permissionsChecked = false
     private(set) var audioInputDevices: [AudioInputDevice] = []
 
     // `var` so SwiftUI can build bindings through it, e.g. $state.preferences.playSounds
@@ -138,6 +141,7 @@ final class AppState {
         hasMicrophonePermission = await AudioRecorder.requestMicrophoneAccess()
         refreshAudioInputDevices()
         refreshAccessibilityPermission()
+        permissionsChecked = true
         applyHotkeyBinding()
         watchForPermissionChanges()
         await loadModel()
