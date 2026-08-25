@@ -53,6 +53,38 @@ struct OpenFlowTests {
         #expect(language == "en")
     }
 
+    @Test("it(\"should turn language logits into probabilities that sum to one\")")
+    func languageProbabilitiesNormalized() {
+        let probabilities = TranscriptionEngine.languageProbabilities(
+            logits: ["pl": 2.0, "en": 3.0, "de": -1.0]
+        )
+        #expect(abs(probabilities.values.reduce(0, +) - 1) < 0.0001)
+    }
+
+    @Test("it(\"should rank the language with the highest logit first\")")
+    func languageProbabilitiesOrder() {
+        let probabilities = TranscriptionEngine.languageProbabilities(
+            logits: ["pl": 2.0, "en": 3.0, "de": -1.0]
+        )
+        #expect(probabilities["en"]! > probabilities["pl"]! && probabilities["pl"]! > probabilities["de"]!)
+    }
+
+    @Test("it(\"should treat every turbo variant as unable to translate\")")
+    func turboCannotTranslate() {
+        let turbo = TranscriptionEngine.availableModels
+            .map(\.id)
+            .filter { $0.contains("v20240930") }
+            .map(TranscriptionEngine.supportsTranslation)
+        #expect(turbo == [false, false])
+    }
+
+    @Test("it(\"should translate locally with the full large-v3 models\")")
+    func largeCanTranslate() {
+        let translating = ["openai_whisper-large-v3_947MB", "openai_whisper-large-v3", "openai_whisper-small"]
+            .map(TranscriptionEngine.supportsTranslation)
+        #expect(translating == [true, true, true])
+    }
+
     @Test("it(\"should provide the same localization keys in all five languages\")")
     func localizationCoverage() {
         let keySets = AppLanguage.allCases.map(L10n.keys)
