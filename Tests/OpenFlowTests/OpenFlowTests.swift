@@ -22,7 +22,7 @@ struct OpenFlowTests {
         let codes = PrimaryLanguage.allCases.map {
             LanguageMode.primary.whisperCode(primaryLanguage: $0)
         }
-        #expect(codes == ["pl", "it", "es"])
+        #expect(codes == ["pl", "it", "es", "bg"])
     }
 
     @Test("it(\"should always cycle Auto, Primary and English\")")
@@ -53,7 +53,7 @@ struct OpenFlowTests {
         #expect(language == "en")
     }
 
-    @Test("it(\"should provide the same localization keys in all four languages\")")
+    @Test("it(\"should provide the same localization keys in all five languages\")")
     func localizationCoverage() {
         let keySets = AppLanguage.allCases.map(L10n.keys)
         #expect(!keySets[0].isEmpty && keySets.dropFirst().allSatisfy { $0 == keySets[0] })

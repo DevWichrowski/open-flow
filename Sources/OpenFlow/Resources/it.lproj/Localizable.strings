@@ -3,6 +3,7 @@
 "language.pl" = "Polacco";
 "language.it" = "Italiano";
 "language.es" = "Spagnolo";
+"language.bg" = "Bulgaro";
 "style.normal" = "Normale";
 "style.loose" = "Informale";
 "model.turbo" = "Large v3 Turbo, predefinito e più veloce";

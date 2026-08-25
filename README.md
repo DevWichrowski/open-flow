@@ -6,7 +6,7 @@
 
 Hold a key. Speak. Release. Your words appear in the app you are using.
 
-**Local speech recognition. Four interface languages. No subscription.**
+**Local speech recognition. Five interface languages. No subscription.**
 
 `macOS 14+` · `Apple Silicon` · `Whisper large-v3-turbo` · `Open source`
 
@@ -61,7 +61,7 @@ supported.
 
 ## Your language, your setup
 
-Choose Polish, Italian or Spanish as your **Primary Language**. English always
+Choose Polish, Italian, Spanish or Bulgarian as your **Primary Language**. English always
 stays available.
 
 | Primary Language | Dictation modes | Translation |
@@ -69,13 +69,14 @@ stays available.
 | Polish | `Auto · PL · EN` | `PL → EN` |
 | Italian | `Auto · IT · EN` | `IT → EN` |
 | Spanish | `Auto · ES · EN` | `ES → EN` |
+| Bulgarian | `Auto · BG · EN` | `BG → EN` |
 
 Auto mode compares only your primary language with English. This avoids the
 common Whisper problem of confusing similar languages during short dictation.
 
 The entire interface can switch instantly between:
 
-`English` · `Polski` · `Italiano` · `Español`
+`English` · `Polski` · `Italiano` · `Español` · `Български`
 
 ## Small app. Serious details.
 

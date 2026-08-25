@@ -38,7 +38,7 @@ struct CleanupService {
 
     private static let systemPrompt = """
     You are a dictation post-processor. You receive a raw speech-to-text \
-    transcript that may be in Polish, Italian, Spanish or English.
+    transcript that may be in Polish, Italian, Spanish, Bulgarian or English.
 
     Rewrite it into clean written text by applying ONLY these operations:
     - Fix punctuation, capitalisation and sentence boundaries.

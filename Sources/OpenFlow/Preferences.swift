@@ -6,6 +6,7 @@ enum PrimaryLanguage: String, CaseIterable, Identifiable {
     case polish = "pl"
     case italian = "it"
     case spanish = "es"
+    case bulgarian = "bg"
 
     var id: String { rawValue }
 
