@@ -94,23 +94,24 @@ final class AudioRecorder {
             throw RecorderError.engineFailed("Core Audio error \(deviceStatus)")
         }
 
-        let inputFormat = input.outputFormat(forBus: 0)
-
-        guard inputFormat.sampleRate > 0,
-              let targetFormat = AVAudioFormat(
+        guard let targetFormat = AVAudioFormat(
                   commonFormat: .pcmFormatFloat32,
                   sampleRate: Self.sampleRate,
                   channels: 1,
                   interleaved: false
-              ),
-              let converter = AVAudioConverter(from: inputFormat, to: targetFormat)
+              )
         else {
             throw RecorderError.converterUnavailable
         }
-        self.converter = converter
+        lock.lock()
+        converter = nil
+        lock.unlock()
 
-        input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
-            self?.append(buffer, using: converter, targetFormat: targetFormat)
+        // Let AVAudioEngine use the active device's native format. Passing the
+        // input node's cached format can crash when Core Audio is still applying
+        // a device change, such as switching from a 48 kHz input to 24 kHz AirPods.
+        input.installTap(onBus: 0, bufferSize: 4096, format: nil) { [weak self] buffer, _ in
+            self?.append(buffer, targetFormat: targetFormat)
         }
 
         do {
@@ -134,24 +135,41 @@ final class AudioRecorder {
 
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
-        converter = nil
         level = 0
 
         lock.lock()
+        converter = nil
         let captured = samples
         samples.removeAll(keepingCapacity: false)
         lock.unlock()
         return captured
     }
 
-    private func append(_ buffer: AVAudioPCMBuffer, using converter: AVAudioConverter, targetFormat: AVAudioFormat) {
+    static func makeConverter(
+        from inputFormat: AVAudioFormat,
+        to targetFormat: AVAudioFormat
+    ) -> AVAudioConverter? {
+        AVAudioConverter(from: inputFormat, to: targetFormat)
+    }
+
+    private func append(_ buffer: AVAudioPCMBuffer, targetFormat: AVAudioFormat) {
+        guard buffer.format.sampleRate > 0 else { return }
+
+        lock.lock()
+        if converter?.inputFormat.isEqual(buffer.format) != true {
+            converter = Self.makeConverter(from: buffer.format, to: targetFormat)
+        }
+        let activeConverter = converter
+        lock.unlock()
+
+        guard let activeConverter else { return }
         let ratio = targetFormat.sampleRate / buffer.format.sampleRate
         let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1024
         guard let output = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: capacity) else { return }
 
         var consumed = false
         var conversionError: NSError?
-        converter.convert(to: output, error: &conversionError) { _, status in
+        activeConverter.convert(to: output, error: &conversionError) { _, status in
             if consumed {
                 status.pointee = .noDataNow
                 return nil
